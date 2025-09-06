@@ -1,173 +1,174 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { OrderWithDetails } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Check, X, Bell, CheckCheck } from "lucide-react";
+import { type Order } from "@shared/schema";
 
 interface OrderCardProps {
-  order: OrderWithDetails;
+  order: Order;
+  onStatusUpdate: (orderId: string, status: string) => void;
+  isUpdating: boolean;
 }
 
-export default function OrderCard({ order }: OrderCardProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async (status: string) => {
-      const response = await apiRequest("PATCH", `/api/orders/${order.id}/status`, { status });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      toast({
-        title: "Order Updated",
-        description: "Order status has been updated successfully.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update order status.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const getStatusColor = (status: string) => {
+export default function OrderCard({ order, onStatusUpdate, isUpdating }: OrderCardProps) {
+  const getStatusBadge = (status: string) => {
+    const baseClasses = "text-xs font-medium";
+    
     switch (status) {
-      case "pending": return "bg-primary text-primary-foreground";
-      case "preparing": return "bg-accent text-accent-foreground";
-      case "ready": return "bg-secondary text-secondary-foreground";
-      case "completed": return "bg-muted text-muted-foreground";
-      default: return "bg-muted text-muted-foreground";
+      case 'pending':
+        return <Badge className={`${baseClasses} bg-yellow-100 text-yellow-800`}>Pending</Badge>;
+      case 'accepted':
+        return <Badge className={`${baseClasses} bg-blue-100 text-blue-800`}>Accepted</Badge>;
+      case 'preparing':
+        return <Badge className={`${baseClasses} bg-blue-100 text-blue-800`}>Preparing</Badge>;
+      case 'ready':
+        return <Badge className={`${baseClasses} bg-green-100 text-green-800`}>Ready</Badge>;
+      case 'completed':
+        return <Badge className={`${baseClasses} bg-gray-100 text-gray-800`}>Completed</Badge>;
+      case 'rejected':
+        return <Badge className={`${baseClasses} bg-red-100 text-red-800`}>Rejected</Badge>;
+      default:
+        return <Badge className={baseClasses}>{status}</Badge>;
     }
   };
 
-  const getNextStatusAction = () => {
+  const getTimeAgo = (createdAt: Date | string) => {
+    const now = new Date();
+    const orderTime = new Date(createdAt);
+    const diffMs = now.getTime() - orderTime.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    return `${diffHours}h ${diffMins % 60}m ago`;
+  };
+
+  const renderActionButtons = () => {
     switch (order.status) {
-      case "pending": 
-        return [
-          { status: "preparing", label: "Accept", icon: "fas fa-check", variant: "secondary" },
-          { status: "cancelled", label: "Reject", icon: "fas fa-times", variant: "destructive" }
-        ];
-      case "preparing": 
-        return [{ status: "ready", label: "Mark Ready", icon: "fas fa-utensils", variant: "secondary" }];
-      case "ready": 
-        return [{ status: "completed", label: "Mark Served", icon: "fas fa-check-double", variant: "primary" }];
-      default: 
-        return [];
+      case 'pending':
+        return (
+          <div className="space-y-2">
+            <Button
+              onClick={() => onStatusUpdate(order.id, 'accepted')}
+              disabled={isUpdating}
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+              data-testid={`button-accept-${order.id}`}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Accept Order
+            </Button>
+            <Button
+              onClick={() => onStatusUpdate(order.id, 'rejected')}
+              disabled={isUpdating}
+              variant="destructive"
+              className="w-full"
+              data-testid={`button-reject-${order.id}`}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Reject Order
+            </Button>
+          </div>
+        );
+      
+      case 'accepted':
+        return (
+          <Button
+            onClick={() => onStatusUpdate(order.id, 'preparing')}
+            disabled={isUpdating}
+            className="w-full"
+            data-testid={`button-start-preparing-${order.id}`}
+          >
+            <Bell className="w-4 h-4 mr-2" />
+            Start Preparing
+          </Button>
+        );
+      
+      case 'preparing':
+        return (
+          <Button
+            onClick={() => onStatusUpdate(order.id, 'ready')}
+            disabled={isUpdating}
+            className="w-full"
+            data-testid={`button-mark-ready-${order.id}`}
+          >
+            <Bell className="w-4 h-4 mr-2" />
+            Mark Ready
+          </Button>
+        );
+      
+      case 'ready':
+        return (
+          <Button
+            onClick={() => onStatusUpdate(order.id, 'completed')}
+            disabled={isUpdating}
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            data-testid={`button-mark-completed-${order.id}`}
+          >
+            <CheckCheck className="w-4 h-4 mr-2" />
+            Mark Completed
+          </Button>
+        );
+      
+      default:
+        return null;
     }
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
-
-  const actions = getNextStatusAction();
+  const orderItems = Array.isArray(order.items) ? order.items : [];
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-sm p-4" data-testid={`card-order-${order.id}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status!)}`} data-testid={`badge-order-status-${order.id}`}>
-            Order #{order.id?.slice(-4) || '0000'}
-          </span>
-        </div>
-        <span className="text-sm text-muted-foreground" data-testid={`text-order-time-${order.id}`}>
-          {order.createdAt ? formatTime(order.createdAt) : 'Unknown'}
-        </span>
-      </div>
-      
-      <div className="mb-3">
-        {order.table && (
-          <div className="flex items-center text-sm text-muted-foreground mb-1">
-            <i className="fas fa-table mr-2"></i>
-            <span data-testid={`text-order-table-${order.id}`}>
-              Table {order.table.tableNumber} • {order.table.section}
-            </span>
+    <Card className="h-fit">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-semibold" data-testid={`text-order-id-${order.id}`}>
+              Order #{order.id.slice(-6)}
+            </h3>
+            <p className="text-sm text-muted-foreground" data-testid={`text-order-details-${order.id}`}>
+              Table {order.tableNumber} • {order.orderType}
+            </p>
           </div>
-        )}
-        <div className="flex items-center text-sm text-muted-foreground">
-          <i className="fas fa-user mr-2"></i>
-          <span data-testid={`text-order-customer-${order.id}`}>
-            {order.customerName}
-          </span>
+          {getStatusBadge(order.status)}
         </div>
-      </div>
 
-      <div className="space-y-2 mb-4">
-        {order.orderItems.map((item, index) => (
-          <div key={index} className="flex justify-between text-sm" data-testid={`order-item-${order.id}-${index}`}>
-            <span data-testid={`text-order-item-name-${order.id}-${index}`}>
-              {item.quantity}x {item.menuItem.name}
-            </span>
-            <span data-testid={`text-order-item-price-${order.id}-${index}`}>
-              ${item.totalPrice}
-            </span>
-          </div>
-        ))}
-        
-        <div className="border-t border-border pt-2">
+        <div className="space-y-2 mb-4">
+          {orderItems.map((item: any, index: number) => (
+            <div key={index} className="flex justify-between text-sm">
+              <span data-testid={`text-order-item-${order.id}-${index}`}>
+                {item.quantity}x {item.name}
+              </span>
+              <span data-testid={`text-order-item-price-${order.id}-${index}`}>
+                ${(parseFloat(item.price) * item.quantity).toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <Separator className="my-3" />
+
+        <div className="mb-4">
           <div className="flex justify-between font-semibold">
             <span>Total</span>
             <span data-testid={`text-order-total-${order.id}`}>
-              ${order.totalAmount}
+              ${parseFloat(order.totalAmount).toFixed(2)}
             </span>
           </div>
+          <p className="text-xs text-muted-foreground mt-1" data-testid={`text-order-time-${order.id}`}>
+            {order.createdAt ? getTimeAgo(order.createdAt) : "Time unknown"}
+          </p>
         </div>
-      </div>
 
-      {order.status === "preparing" && (
-        <div className="mb-3">
-          <div className="bg-accent/20 border border-accent/30 rounded p-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Preparing</span>
-              <span className="text-xs text-muted-foreground" data-testid={`text-preparing-duration-${order.id}`}>
-                Started {Math.floor((Date.now() - new Date(order.updatedAt!).getTime()) / 60000)} min ago
-              </span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2 mt-2">
-              <div className="bg-accent h-2 rounded-full w-3/4"></div>
-            </div>
+        {order.specialInstructions && (
+          <div className="mb-4 p-2 bg-muted rounded text-sm">
+            <strong>Special Instructions:</strong> {order.specialInstructions}
           </div>
-        </div>
-      )}
+        )}
 
-      {order.status === "ready" && (
-        <div className="mb-3">
-          <div className="bg-secondary/20 border border-secondary/30 rounded p-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Ready for Pickup</span>
-              <i className="fas fa-bell text-secondary"></i>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {actions.length > 0 && (
-        <div className="flex space-x-2">
-          {actions.map((action, index) => (
-            <Button
-              key={index}
-              onClick={() => updateStatusMutation.mutate(action.status)}
-              disabled={updateStatusMutation.isPending}
-              variant={action.variant as any}
-              className="flex-1"
-              data-testid={`button-${action.status}-${order.id}`}
-            >
-              {updateStatusMutation.isPending ? (
-                <i className="fas fa-spinner fa-spin mr-1"></i>
-              ) : (
-                <i className={`${action.icon} mr-1`}></i>
-              )}
-              {action.label}
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
+        {renderActionButtons()}
+      </CardContent>
+    </Card>
   );
 }

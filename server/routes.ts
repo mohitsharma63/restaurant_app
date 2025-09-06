@@ -2,41 +2,43 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertOrderSchema, insertTableSchema, insertMenuItemSchema, restaurants } from "@shared/schema";
-import { db } from "./db";
-import { z } from "zod";
+import { insertOrderSchema, insertQrCodeSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
-  
-  // Initialize sample data
-  await storage.initializeSampleData();
 
-  // WebSocket server for real-time updates
+  // WebSocket server for real-time order updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
+  const clients = new Set<WebSocket>();
+
   wss.on('connection', (ws) => {
-    console.log('Client connected to WebSocket');
-    
-    ws.on('message', (message) => {
-      console.log('Received:', message.toString());
-    });
+    clients.add(ws);
     
     ws.on('close', () => {
-      console.log('Client disconnected from WebSocket');
+      clients.delete(ws);
     });
   });
 
-  // Broadcast function for real-time updates
-  function broadcast(data: any) {
-    wss.clients.forEach((client) => {
+  function broadcastToClients(message: any) {
+    const messageString = JSON.stringify(message);
+    clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data));
+        client.send(messageString);
       }
     });
   }
 
   // Restaurant routes
+  app.get("/api/restaurants", async (req, res) => {
+    try {
+      const restaurants = await storage.getAllRestaurants();
+      res.json(restaurants);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch restaurants" });
+    }
+  });
+
   app.get("/api/restaurants/:id", async (req, res) => {
     try {
       const restaurant = await storage.getRestaurant(req.params.id);
@@ -45,156 +47,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(restaurant);
     } catch (error) {
-      console.error("Error fetching restaurant:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant" });
-    }
-  });
-
-  // Get default restaurant (for demo purposes)
-  app.get("/api/restaurant", async (req, res) => {
-    try {
-      // Get the first restaurant for demo - query restaurants directly
-      const result = await db.select().from(restaurants).limit(1);
-      if (result.length > 0) {
-        res.json(result[0]);
-      } else {
-        res.status(404).json({ message: "No restaurant found" });
-      }
-    } catch (error) {
-      console.error("Error fetching restaurant:", error);
       res.status(500).json({ message: "Failed to fetch restaurant" });
     }
   });
 
   // Menu routes
-  app.get("/api/restaurants/:restaurantId/categories", async (req, res) => {
-    try {
-      const categories = await storage.getMenuCategories(req.params.restaurantId);
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      res.status(500).json({ message: "Failed to fetch categories" });
-    }
-  });
-
   app.get("/api/restaurants/:restaurantId/menu", async (req, res) => {
     try {
-      const { categoryId } = req.query;
-      const menuItems = await storage.getMenuItems(
-        req.params.restaurantId, 
-        categoryId as string
-      );
+      const menuItems = await storage.getMenuItemsByRestaurant(req.params.restaurantId);
       res.json(menuItems);
     } catch (error) {
-      console.error("Error fetching menu items:", error);
       res.status(500).json({ message: "Failed to fetch menu items" });
-    }
-  });
-
-  // Get menu for default restaurant
-  app.get("/api/menu", async (req, res) => {
-    try {
-      // Get the first restaurant for demo
-      const result = await db.select().from(restaurants).limit(1);
-      if (result.length === 0) {
-        return res.status(404).json({ message: "No restaurant found" });
-      }
-
-      const { categoryId } = req.query;
-      const menuItems = await storage.getMenuItems(result[0].id, categoryId as string);
-      res.json(menuItems);
-    } catch (error) {
-      console.error("Error fetching menu items:", error);
-      res.status(500).json({ message: "Failed to fetch menu items" });
-    }
-  });
-
-  app.get("/api/categories", async (req, res) => {
-    try {
-      // Get the first restaurant for demo
-      const result = await db.select().from(restaurants).limit(1);
-      if (result.length === 0) {
-        return res.status(404).json({ message: "No restaurant found" });
-      }
-
-      const categories = await storage.getMenuCategories(result[0].id);
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      res.status(500).json({ message: "Failed to fetch categories" });
-    }
-  });
-
-  // Table routes
-  app.get("/api/restaurants/:restaurantId/tables", async (req, res) => {
-    try {
-      const tables = await storage.getTables(req.params.restaurantId);
-      res.json(tables);
-    } catch (error) {
-      console.error("Error fetching tables:", error);
-      res.status(500).json({ message: "Failed to fetch tables" });
-    }
-  });
-
-  app.get("/api/tables/:id", async (req, res) => {
-    try {
-      const table = await storage.getTable(req.params.id);
-      if (!table) {
-        return res.status(404).json({ message: "Table not found" });
-      }
-      res.json(table);
-    } catch (error) {
-      console.error("Error fetching table:", error);
-      res.status(500).json({ message: "Failed to fetch table" });
-    }
-  });
-
-  app.post("/api/restaurants/:restaurantId/tables", async (req, res) => {
-    try {
-      const tableData = insertTableSchema.parse({
-        ...req.body,
-        restaurantId: req.params.restaurantId,
-      });
-      
-      // Generate QR code URL
-      const qrCodeUrl = `${req.protocol}://${req.get('host')}/menu/${req.params.restaurantId}/${tableData.tableNumber}`;
-      
-      const table = await storage.createTable({
-        ...tableData,
-        qrCodeUrl,
-      });
-      
-      res.status(201).json(table);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      console.error("Error creating table:", error);
-      res.status(500).json({ message: "Failed to create table" });
     }
   });
 
   // Order routes
-  app.get("/api/restaurants/:restaurantId/orders", async (req, res) => {
-    try {
-      const { status } = req.query;
-      const orders = await storage.getOrders(req.params.restaurantId, status as string);
-      res.json(orders);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      res.status(500).json({ message: "Failed to fetch orders" });
-    }
-  });
-
-  // Get orders for default restaurant
   app.get("/api/orders", async (req, res) => {
     try {
-      const { status } = req.query;
-      // For demo, get orders from first available restaurant
-      const allOrders = await storage.getOrders("", status as string);
-      res.json(allOrders);
+      const { restaurantId } = req.query;
+      let orders;
+      
+      if (restaurantId) {
+        orders = await storage.getOrdersByRestaurant(restaurantId as string);
+      } else {
+        orders = await storage.getAllOrders();
+      }
+      
+      res.json(orders);
     } catch (error) {
-      console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
     }
   });
@@ -207,115 +87,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(order);
     } catch (error) {
-      console.error("Error fetching order:", error);
       res.status(500).json({ message: "Failed to fetch order" });
     }
   });
 
   app.post("/api/orders", async (req, res) => {
     try {
-      const { orderData, items } = req.body;
+      const validatedData = insertOrderSchema.parse(req.body);
+      const order = await storage.createOrder(validatedData);
       
-      const validatedOrder = insertOrderSchema.parse(orderData);
-      
-      // Calculate total amount
-      let totalAmount = 0;
-      const validatedItems = [];
-      
-      for (const item of items) {
-        const menuItem = await storage.getMenuItem(item.menuItemId);
-        if (!menuItem) {
-          return res.status(400).json({ message: `Menu item ${item.menuItemId} not found` });
-        }
-        
-        const unitPrice = parseFloat(menuItem.price);
-        const totalPrice = unitPrice * item.quantity;
-        totalAmount += totalPrice;
-        
-        validatedItems.push({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          unitPrice: unitPrice.toString(),
-          totalPrice: totalPrice.toString(),
-          notes: item.notes || null,
-        });
-      }
-      
-      const order = await storage.createOrder(
-        {
-          ...validatedOrder,
-          totalAmount: totalAmount.toString(),
-        },
-        validatedItems
-      );
-      
-      // Broadcast new order to restaurant dashboard
-      broadcast({
+      // Broadcast new order to all connected clients
+      broadcastToClients({
         type: 'new_order',
-        order,
+        order
       });
       
       res.status(201).json(order);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      console.error("Error creating order:", error);
-      res.status(500).json({ message: "Failed to create order" });
+      res.status(400).json({ message: "Invalid order data", error: error.message });
     }
   });
 
   app.patch("/api/orders/:id/status", async (req, res) => {
     try {
       const { status } = req.body;
+      const order = await storage.updateOrderStatus(req.params.id, status);
       
-      if (!["pending", "preparing", "ready", "completed", "cancelled"].includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
       }
       
-      const updatedOrder = await storage.updateOrderStatus(req.params.id, status);
-      
-      // Broadcast order status update
-      broadcast({
+      // Broadcast order status update to all connected clients
+      broadcastToClients({
         type: 'order_status_update',
-        orderId: req.params.id,
-        status,
+        orderId: order.id,
+        status: order.status,
+        order
       });
       
-      res.json(updatedOrder);
+      res.json(order);
     } catch (error) {
-      console.error("Error updating order status:", error);
       res.status(500).json({ message: "Failed to update order status" });
     }
   });
 
-  // Menu item management routes
-  app.post("/api/restaurants/:restaurantId/menu", async (req, res) => {
+  // QR Code routes
+  app.get("/api/restaurants/:restaurantId/qr-codes", async (req, res) => {
     try {
-      const itemData = insertMenuItemSchema.parse({
-        ...req.body,
-        restaurantId: req.params.restaurantId,
-      });
-      
-      const menuItem = await storage.createMenuItem(itemData);
-      res.status(201).json(menuItem);
+      const qrCodes = await storage.getQrCodesByRestaurant(req.params.restaurantId);
+      res.json(qrCodes);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      console.error("Error creating menu item:", error);
-      res.status(500).json({ message: "Failed to create menu item" });
+      res.status(500).json({ message: "Failed to fetch QR codes" });
     }
   });
 
-  app.patch("/api/menu/:id", async (req, res) => {
+  app.post("/api/qr-codes", async (req, res) => {
     try {
-      const updates = req.body;
-      const menuItem = await storage.updateMenuItem(req.params.id, updates);
-      res.json(menuItem);
+      const validatedData = insertQrCodeSchema.parse(req.body);
+      const qrCode = await storage.createQrCode(validatedData);
+      res.status(201).json(qrCode);
     } catch (error) {
-      console.error("Error updating menu item:", error);
-      res.status(500).json({ message: "Failed to update menu item" });
+      res.status(400).json({ message: "Invalid QR code data", error: error.message });
+    }
+  });
+
+  app.get("/api/qr-codes/:restaurantId/:tableNumber", async (req, res) => {
+    try {
+      const { restaurantId, tableNumber } = req.params;
+      const qrCode = await storage.getQrCodeByTableAndRestaurant(
+        restaurantId, 
+        parseInt(tableNumber)
+      );
+      
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+      
+      res.json(qrCode);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QR code" });
     }
   });
 

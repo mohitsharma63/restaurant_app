@@ -1,455 +1,275 @@
 import { 
-  restaurants,
-  menuCategories,
-  menuItems,
-  tables,
-  orders,
-  orderItems,
-  type Restaurant,
+  type User, 
+  type InsertUser, 
+  type Restaurant, 
   type InsertRestaurant,
-  type MenuCategory,
-  type InsertMenuCategory,
   type MenuItem,
   type InsertMenuItem,
-  type MenuItemWithCategory,
-  type Table,
-  type InsertTable,
   type Order,
   type InsertOrder,
-  type OrderItem,
-  type InsertOrderItem,
-  type OrderWithDetails
+  type QrCode,
+  type InsertQrCode
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 export interface IStorage {
-  // Restaurant operations
+  // Users
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+
+  // Restaurants
   getRestaurant(id: string): Promise<Restaurant | undefined>;
+  getAllRestaurants(): Promise<Restaurant[]>;
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
-  
-  // Menu category operations
-  getMenuCategories(restaurantId: string): Promise<MenuCategory[]>;
-  createMenuCategory(category: InsertMenuCategory): Promise<MenuCategory>;
-  
-  // Menu item operations
-  getMenuItems(restaurantId: string, categoryId?: string): Promise<MenuItemWithCategory[]>;
+  updateRestaurant(id: string, updates: Partial<Restaurant>): Promise<Restaurant | undefined>;
+
+  // Menu Items
+  getMenuItemsByRestaurant(restaurantId: string): Promise<MenuItem[]>;
   getMenuItem(id: string): Promise<MenuItem | undefined>;
   createMenuItem(item: InsertMenuItem): Promise<MenuItem>;
-  updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<MenuItem>;
-  
-  // Table operations
-  getTables(restaurantId: string): Promise<Table[]>;
-  getTable(id: string): Promise<Table | undefined>;
-  getTableByNumber(restaurantId: string, tableNumber: string): Promise<Table | undefined>;
-  createTable(table: InsertTable): Promise<Table>;
-  updateTable(id: string, table: Partial<InsertTable>): Promise<Table>;
-  
-  // Order operations
-  getOrders(restaurantId: string, status?: string): Promise<OrderWithDetails[]>;
-  getOrder(id: string): Promise<OrderWithDetails | undefined>;
-  createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<OrderWithDetails>;
-  updateOrderStatus(id: string, status: string): Promise<Order>;
-  
-  // Initialize sample data
-  initializeSampleData(): Promise<void>;
+  updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<MenuItem | undefined>;
+
+  // Orders
+  getOrder(id: string): Promise<Order | undefined>;
+  getOrdersByRestaurant(restaurantId: string): Promise<Order[]>;
+  getAllOrders(): Promise<Order[]>;
+  createOrder(order: InsertOrder): Promise<Order>;
+  updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
+
+  // QR Codes
+  getQrCode(id: string): Promise<QrCode | undefined>;
+  getQrCodesByRestaurant(restaurantId: string): Promise<QrCode[]>;
+  createQrCode(qrCode: InsertQrCode): Promise<QrCode>;
+  getQrCodeByTableAndRestaurant(restaurantId: string, tableNumber: number): Promise<QrCode | undefined>;
 }
 
-export class DatabaseStorage implements IStorage {
+export class MemStorage implements IStorage {
+  private users: Map<string, User>;
+  private restaurants: Map<string, Restaurant>;
+  private menuItems: Map<string, MenuItem>;
+  private orders: Map<string, Order>;
+  private qrCodes: Map<string, QrCode>;
+
+  constructor() {
+    this.users = new Map();
+    this.restaurants = new Map();
+    this.menuItems = new Map();
+    this.orders = new Map();
+    this.qrCodes = new Map();
+    
+    // Initialize with sample data
+    this.initializeSampleData();
+  }
+
+  private async initializeSampleData() {
+    // Create sample restaurant
+    const restaurant = await this.createRestaurant({
+      name: "Delicious Bistro",
+      address: "123 Main St, City",
+      phone: "+1234567890",
+      isOpen: true,
+      ownerId: null
+    });
+
+    // Create sample menu items
+    const menuItems = [
+      {
+        restaurantId: restaurant.id,
+        name: "Caesar Salad",
+        description: "Fresh romaine lettuce, parmesan cheese, croutons with Caesar dressing",
+        price: "12.00",
+        category: "Appetizers",
+        imageUrl: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200",
+        isAvailable: true
+      },
+      {
+        restaurantId: restaurant.id,
+        name: "Buffalo Wings",
+        description: "Spicy buffalo wings served with celery sticks and blue cheese dip",
+        price: "15.00",
+        category: "Appetizers",
+        imageUrl: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200",
+        isAvailable: true
+      },
+      {
+        restaurantId: restaurant.id,
+        name: "Mushroom Soup",
+        description: "Creamy mushroom soup with fresh herbs and a touch of white wine",
+        price: "9.00",
+        category: "Appetizers",
+        imageUrl: "https://images.unsplash.com/photo-1547592166-23ac45744acd?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200",
+        isAvailable: true
+      },
+      {
+        restaurantId: restaurant.id,
+        name: "Grilled Salmon",
+        description: "Fresh Atlantic salmon with roasted vegetables and lemon butter sauce",
+        price: "28.00",
+        category: "Main Courses",
+        imageUrl: "https://images.unsplash.com/photo-1485921325833-c519f76c4927?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200",
+        isAvailable: true
+      },
+      {
+        restaurantId: restaurant.id,
+        name: "Ribeye Steak",
+        description: "12oz ribeye steak with garlic mashed potatoes and seasonal vegetables",
+        price: "35.00",
+        category: "Main Courses",
+        imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=200",
+        isAvailable: true
+      }
+    ];
+
+    for (const item of menuItems) {
+      await this.createMenuItem(item);
+    }
+
+    // Create sample QR codes for tables 1-10
+    for (let i = 1; i <= 10; i++) {
+      await this.createQrCode({
+        restaurantId: restaurant.id,
+        tableNumber: i,
+        qrData: `/menu/${restaurant.id}/${i}`,
+        isActive: true
+      });
+    }
+  }
+
+  // Users
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.username === username,
+    );
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const user: User = { ...insertUser, id };
+    this.users.set(id, user);
+    return user;
+  }
+
+  // Restaurants
   async getRestaurant(id: string): Promise<Restaurant | undefined> {
-    const [restaurant] = await db.select().from(restaurants).where(eq(restaurants.id, id));
-    return restaurant || undefined;
+    return this.restaurants.get(id);
   }
 
-  async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {
-    const [newRestaurant] = await db
-      .insert(restaurants)
-      .values(restaurant)
-      .returning();
-    return newRestaurant;
+  async getAllRestaurants(): Promise<Restaurant[]> {
+    return Array.from(this.restaurants.values());
   }
 
-  async getMenuCategories(restaurantId: string): Promise<MenuCategory[]> {
-    return await db
-      .select()
-      .from(menuCategories)
-      .where(eq(menuCategories.restaurantId, restaurantId))
-      .orderBy(asc(menuCategories.displayOrder), asc(menuCategories.name));
+  async createRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
+    const id = randomUUID();
+    const restaurant: Restaurant = { ...insertRestaurant, id };
+    this.restaurants.set(id, restaurant);
+    return restaurant;
   }
 
-  async createMenuCategory(category: InsertMenuCategory): Promise<MenuCategory> {
-    const [newCategory] = await db
-      .insert(menuCategories)
-      .values(category)
-      .returning();
-    return newCategory;
+  async updateRestaurant(id: string, updates: Partial<Restaurant>): Promise<Restaurant | undefined> {
+    const restaurant = this.restaurants.get(id);
+    if (!restaurant) return undefined;
+    
+    const updated = { ...restaurant, ...updates };
+    this.restaurants.set(id, updated);
+    return updated;
   }
 
-  async getMenuItems(restaurantId: string, categoryId?: string): Promise<MenuItemWithCategory[]> {
-    const query = db
-      .select({
-        id: menuItems.id,
-        restaurantId: menuItems.restaurantId,
-        categoryId: menuItems.categoryId,
-        name: menuItems.name,
-        description: menuItems.description,
-        price: menuItems.price,
-        imageUrl: menuItems.imageUrl,
-        available: menuItems.available,
-        displayOrder: menuItems.displayOrder,
-        createdAt: menuItems.createdAt,
-        updatedAt: menuItems.updatedAt,
-        category: {
-          id: menuCategories.id,
-          restaurantId: menuCategories.restaurantId,
-          name: menuCategories.name,
-          displayOrder: menuCategories.displayOrder,
-          createdAt: menuCategories.createdAt,
-        }
-      })
-      .from(menuItems)
-      .leftJoin(menuCategories, eq(menuItems.categoryId, menuCategories.id))
-      .where(
-        categoryId 
-          ? and(eq(menuItems.restaurantId, restaurantId), eq(menuItems.categoryId, categoryId))
-          : eq(menuItems.restaurantId, restaurantId)
-      )
-      .orderBy(asc(menuItems.displayOrder), asc(menuItems.name));
-
-    return await query as MenuItemWithCategory[];
+  // Menu Items
+  async getMenuItemsByRestaurant(restaurantId: string): Promise<MenuItem[]> {
+    return Array.from(this.menuItems.values()).filter(
+      item => item.restaurantId === restaurantId
+    );
   }
 
   async getMenuItem(id: string): Promise<MenuItem | undefined> {
-    const [item] = await db.select().from(menuItems).where(eq(menuItems.id, id));
-    return item || undefined;
+    return this.menuItems.get(id);
   }
 
-  async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
-    const [newItem] = await db
-      .insert(menuItems)
-      .values(item)
-      .returning();
-    return newItem;
+  async createMenuItem(insertMenuItem: InsertMenuItem): Promise<MenuItem> {
+    const id = randomUUID();
+    const menuItem: MenuItem = { ...insertMenuItem, id };
+    this.menuItems.set(id, menuItem);
+    return menuItem;
   }
 
-  async updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<MenuItem> {
-    const [updatedItem] = await db
-      .update(menuItems)
-      .set({ ...item, updatedAt: new Date() })
-      .where(eq(menuItems.id, id))
-      .returning();
-    return updatedItem;
-  }
-
-  async getTables(restaurantId: string): Promise<Table[]> {
-    return await db
-      .select()
-      .from(tables)
-      .where(eq(tables.restaurantId, restaurantId))
-      .orderBy(asc(tables.tableNumber));
-  }
-
-  async getTable(id: string): Promise<Table | undefined> {
-    const [table] = await db.select().from(tables).where(eq(tables.id, id));
-    return table || undefined;
-  }
-
-  async getTableByNumber(restaurantId: string, tableNumber: string): Promise<Table | undefined> {
-    const [table] = await db
-      .select()
-      .from(tables)
-      .where(and(eq(tables.restaurantId, restaurantId), eq(tables.tableNumber, tableNumber)));
-    return table || undefined;
-  }
-
-  async createTable(table: InsertTable): Promise<Table> {
-    const [newTable] = await db
-      .insert(tables)
-      .values(table)
-      .returning();
-    return newTable;
-  }
-
-  async updateTable(id: string, table: Partial<InsertTable>): Promise<Table> {
-    const [updatedTable] = await db
-      .update(tables)
-      .set({ ...table, updatedAt: new Date() })
-      .where(eq(tables.id, id))
-      .returning();
-    return updatedTable;
-  }
-
-  async getOrders(restaurantId: string, status?: string): Promise<OrderWithDetails[]> {
-    const query = db
-      .select({
-        id: orders.id,
-        restaurantId: orders.restaurantId,
-        tableId: orders.tableId,
-        customerName: orders.customerName,
-        customerPhone: orders.customerPhone,
-        status: orders.status,
-        orderType: orders.orderType,
-        totalAmount: orders.totalAmount,
-        notes: orders.notes,
-        createdAt: orders.createdAt,
-        updatedAt: orders.updatedAt,
-      })
-      .from(orders)
-      .where(
-        status
-          ? and(eq(orders.restaurantId, restaurantId), eq(orders.status, status))
-          : eq(orders.restaurantId, restaurantId)
-      )
-      .orderBy(desc(orders.createdAt));
-
-    const orderResults = await query;
-
-    // Fetch order items and related data for each order
-    const ordersWithDetails: OrderWithDetails[] = [];
+  async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<MenuItem | undefined> {
+    const menuItem = this.menuItems.get(id);
+    if (!menuItem) return undefined;
     
-    for (const order of orderResults) {
-      const items = await db
-        .select({
-          id: orderItems.id,
-          orderId: orderItems.orderId,
-          menuItemId: orderItems.menuItemId,
-          quantity: orderItems.quantity,
-          unitPrice: orderItems.unitPrice,
-          totalPrice: orderItems.totalPrice,
-          notes: orderItems.notes,
-          menuItem: {
-            id: menuItems.id,
-            restaurantId: menuItems.restaurantId,
-            categoryId: menuItems.categoryId,
-            name: menuItems.name,
-            description: menuItems.description,
-            price: menuItems.price,
-            imageUrl: menuItems.imageUrl,
-            available: menuItems.available,
-            displayOrder: menuItems.displayOrder,
-            createdAt: menuItems.createdAt,
-            updatedAt: menuItems.updatedAt,
-          }
-        })
-        .from(orderItems)
-        .leftJoin(menuItems, eq(orderItems.menuItemId, menuItems.id))
-        .where(eq(orderItems.orderId, order.id));
-
-      const table = order.tableId ? await this.getTable(order.tableId) : undefined;
-
-      ordersWithDetails.push({
-        ...order,
-        orderItems: items as (OrderItem & { menuItem: MenuItem; })[],
-        table,
-      });
-    }
-
-    return ordersWithDetails;
+    const updated = { ...menuItem, ...updates };
+    this.menuItems.set(id, updated);
+    return updated;
   }
 
-  async getOrder(id: string): Promise<OrderWithDetails | undefined> {
-    const [order] = await db.select().from(orders).where(eq(orders.id, id));
-    if (!order) return undefined;
+  // Orders
+  async getOrder(id: string): Promise<Order | undefined> {
+    return this.orders.get(id);
+  }
 
-    const items = await db
-      .select({
-        id: orderItems.id,
-        orderId: orderItems.orderId,
-        menuItemId: orderItems.menuItemId,
-        quantity: orderItems.quantity,
-        unitPrice: orderItems.unitPrice,
-        totalPrice: orderItems.totalPrice,
-        notes: orderItems.notes,
-        menuItem: {
-          id: menuItems.id,
-          restaurantId: menuItems.restaurantId,
-          categoryId: menuItems.categoryId,
-          name: menuItems.name,
-          description: menuItems.description,
-          price: menuItems.price,
-          imageUrl: menuItems.imageUrl,
-          available: menuItems.available,
-          displayOrder: menuItems.displayOrder,
-          createdAt: menuItems.createdAt,
-          updatedAt: menuItems.updatedAt,
-        }
-      })
-      .from(orderItems)
-      .leftJoin(menuItems, eq(orderItems.menuItemId, menuItems.id))
-      .where(eq(orderItems.orderId, order.id));
+  async getOrdersByRestaurant(restaurantId: string): Promise<Order[]> {
+    return Array.from(this.orders.values()).filter(
+      order => order.restaurantId === restaurantId
+    );
+  }
 
-    const table = order.tableId ? await this.getTable(order.tableId) : undefined;
+  async getAllOrders(): Promise<Order[]> {
+    return Array.from(this.orders.values());
+  }
 
-    return {
-      ...order,
-      orderItems: items as (OrderItem & { menuItem: MenuItem; })[],
-      table,
+  async createOrder(insertOrder: InsertOrder): Promise<Order> {
+    const id = randomUUID();
+    const now = new Date();
+    const order: Order = { 
+      ...insertOrder, 
+      id, 
+      createdAt: now,
+      updatedAt: now
     };
+    this.orders.set(id, order);
+    return order;
   }
 
-  async createOrder(orderData: InsertOrder, items: InsertOrderItem[]): Promise<OrderWithDetails> {
-    const [newOrder] = await db
-      .insert(orders)
-      .values(orderData)
-      .returning();
-
-    // Insert order items
-    const orderItemsWithOrderId = items.map(item => ({
-      ...item,
-      orderId: newOrder.id,
-    }));
-
-    await db.insert(orderItems).values(orderItemsWithOrderId);
-
-    const orderWithDetails = await this.getOrder(newOrder.id);
-    if (!orderWithDetails) {
-      throw new Error("Failed to retrieve created order");
-    }
-
-    return orderWithDetails;
+  async updateOrderStatus(id: string, status: string): Promise<Order | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+    
+    const updated = { ...order, status, updatedAt: new Date() };
+    this.orders.set(id, updated);
+    return updated;
   }
 
-  async updateOrderStatus(id: string, status: string): Promise<Order> {
-    const [updatedOrder] = await db
-      .update(orders)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(orders.id, id))
-      .returning();
-    return updatedOrder;
+  // QR Codes
+  async getQrCode(id: string): Promise<QrCode | undefined> {
+    return this.qrCodes.get(id);
   }
 
-  async initializeSampleData(): Promise<void> {
-    // Check if restaurant already exists
-    const existingRestaurants = await db.select().from(restaurants).limit(1);
-    if (existingRestaurants.length > 0) {
-      return; // Sample data already exists
-    }
+  async getQrCodesByRestaurant(restaurantId: string): Promise<QrCode[]> {
+    return Array.from(this.qrCodes.values()).filter(
+      qr => qr.restaurantId === restaurantId
+    );
+  }
 
-    // Create sample restaurant
-    const [restaurant] = await db
-      .insert(restaurants)
-      .values({
-        name: "Bella Vista Restaurant",
-        address: "123 Main Street, Downtown",
-        description: "Authentic Italian Cuisine"
-      })
-      .returning();
+  async createQrCode(insertQrCode: InsertQrCode): Promise<QrCode> {
+    const id = randomUUID();
+    const qrCode: QrCode = { 
+      ...insertQrCode, 
+      id, 
+      createdAt: new Date()
+    };
+    this.qrCodes.set(id, qrCode);
+    return qrCode;
+  }
 
-    // Create menu categories
-    const categories = [
-      { name: "Appetizers", displayOrder: 1 },
-      { name: "Main Course", displayOrder: 2 },
-      { name: "Desserts", displayOrder: 3 },
-      { name: "Beverages", displayOrder: 4 }
-    ];
-
-    const createdCategories: MenuCategory[] = [];
-    for (const category of categories) {
-      const [newCategory] = await db
-        .insert(menuCategories)
-        .values({
-          ...category,
-          restaurantId: restaurant.id
-        })
-        .returning();
-      createdCategories.push(newCategory);
-    }
-
-    // Create sample menu items
-    const sampleItems = [
-      {
-        categoryIndex: 0, // Appetizers
-        items: [
-          {
-            name: "Bruschetta Italiana",
-            description: "Fresh tomatoes, basil, garlic on toasted bread",
-            price: "12.00",
-            imageUrl: "https://images.unsplash.com/photo-1572695157366-5e585ab2b69f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          },
-          {
-            name: "Calamari Fritti",
-            description: "Crispy fried squid rings with marinara sauce",
-            price: "16.00",
-            imageUrl: "https://images.unsplash.com/photo-1559847844-5315695dadae?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          }
-        ]
-      },
-      {
-        categoryIndex: 1, // Main Course
-        items: [
-          {
-            name: "Pizza Margherita",
-            description: "Fresh mozzarella, tomato sauce, basil, olive oil",
-            price: "24.00",
-            imageUrl: "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          },
-          {
-            name: "Salmone alla Griglia",
-            description: "Grilled Atlantic salmon with lemon butter sauce",
-            price: "32.00",
-            imageUrl: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          },
-          {
-            name: "Pasta Carbonara",
-            description: "Traditional Roman pasta with eggs, cheese, and pancetta",
-            price: "22.00",
-            imageUrl: "https://images.unsplash.com/photo-1621996346565-e3dbc353d524?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          },
-          {
-            name: "Bistecca alla Griglia",
-            description: "Premium ribeye steak with roasted seasonal vegetables",
-            price: "45.00",
-            imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          }
-        ]
-      },
-      {
-        categoryIndex: 2, // Desserts
-        items: [
-          {
-            name: "Tiramisu",
-            description: "Classic Italian dessert with coffee and mascarpone",
-            price: "14.00",
-            imageUrl: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          },
-          {
-            name: "Gelato Trio",
-            description: "Three scoops of artisanal gelato with fresh berries",
-            price: "10.00",
-            imageUrl: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400"
-          }
-        ]
-      }
-    ];
-
-    for (const categoryData of sampleItems) {
-      const category = createdCategories[categoryData.categoryIndex];
-      for (const item of categoryData.items) {
-        await db.insert(menuItems).values({
-          ...item,
-          restaurantId: restaurant.id,
-          categoryId: category.id
-        });
-      }
-    }
-
-    // Create sample tables
-    const sampleTables = [
-      { tableNumber: "12", section: "Section A" },
-      { tableNumber: "8", section: "Section B" },
-      { tableNumber: "5", section: "Section A" },
-      { tableNumber: "15", section: "Section A" },
-      { tableNumber: "3", section: "Outdoor" }
-    ];
-
-    for (const table of sampleTables) {
-      await db.insert(tables).values({
-        ...table,
-        restaurantId: restaurant.id,
-        qrCodeUrl: `https://menu.bellavista.com/table/${table.tableNumber}`
-      });
-    }
+  async getQrCodeByTableAndRestaurant(restaurantId: string, tableNumber: number): Promise<QrCode | undefined> {
+    return Array.from(this.qrCodes.values()).find(
+      qr => qr.restaurantId === restaurantId && qr.tableNumber === tableNumber
+    );
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();

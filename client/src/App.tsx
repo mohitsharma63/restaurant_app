@@ -3,25 +3,24 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Navigation from "@/components/navigation";
+import QrLanding from "@/pages/qr-landing";
+import Menu from "@/pages/menu";
+import Cart from "@/pages/cart";
+import Dashboard from "@/pages/dashboard";
+import OrderStatus from "@/pages/order-status";
 import NotFound from "@/pages/not-found";
-import CustomerMenu from "@/pages/customer-menu";
-import RestaurantDashboard from "@/pages/restaurant-dashboard";
-import QRGenerator from "@/pages/qr-generator";
-import NavigationTabs from "@/components/navigation-tabs";
 
 function Router() {
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationTabs />
-      <Switch>
-        <Route path="/" component={CustomerMenu} />
-        <Route path="/customer-menu" component={CustomerMenu} />
-        <Route path="/dashboard" component={RestaurantDashboard} />
-        <Route path="/qr-generator" component={QRGenerator} />
-        <Route path="/menu/:restaurantId/:tableId" component={CustomerMenu} />
-        <Route component={NotFound} />
-      </Switch>
-    </div>
+    <Switch>
+      <Route path="/" component={QrLanding} />
+      <Route path="/menu/:restaurantId/:tableNumber" component={Menu} />
+      <Route path="/cart" component={Cart} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/order-status/:orderId" component={OrderStatus} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
@@ -29,8 +28,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <div className="min-h-screen bg-background">
+          <Navigation />
+          <Router />
+        </div>
         <Toaster />
-        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );
