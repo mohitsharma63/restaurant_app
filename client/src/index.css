@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(234, 25%, 8%);
+  --foreground: hsl(36, 45%, 95%);
+  --card: hsl(36, 5%, 97%);
+  --card-foreground: hsl(234, 15%, 15%);
+  --popover: hsl(36, 5%, 97%);
+  --popover-foreground: hsl(234, 15%, 15%);
+  --primary: hsl(47, 96%, 53%);
+  --primary-foreground: hsl(234, 25%, 8%);
+  --secondary: hsl(234, 8%, 85%);
+  --secondary-foreground: hsl(234, 15%, 15%);
+  --muted: hsl(36, 3%, 94%);
+  --muted-foreground: hsl(234, 8%, 45%);
+  --accent: hsl(47, 76%, 68%);
+  --accent-foreground: hsl(234, 25%, 8%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(36, 45%, 95%);
+  --border: hsl(234, 8%, 85%);
+  --input: hsl(234, 8%, 85%);
+  --ring: hsl(47, 96%, 53%);
+  --chart-1: hsl(47, 96%, 53%);
+  --chart-2: hsl(159, 100%, 36%);
+  --chart-3: hsl(42, 93%, 56%);
+  --chart-4: hsl(147, 79%, 42%);
+  --chart-5: hsl(341, 75%, 51%);
+  --sidebar: hsl(36, 5%, 97%);
+  --sidebar-foreground: hsl(234, 15%, 15%);
+  --sidebar-primary: hsl(47, 96%, 53%);
+  --sidebar-primary-foreground: hsl(234, 25%, 8%);
+  --sidebar-accent: hsl(47, 76%, 68%);
+  --sidebar-accent-foreground: hsl(234, 25%, 8%);
+  --sidebar-border: hsl(234, 8%, 85%);
+  --sidebar-ring: hsl(47, 96%, 53%);
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "Fira Code", monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00), 0px 1px 2px -1px hsl(47, 96%, 53%, 0.00);
+  --shadow: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00), 0px 1px 2px -1px hsl(47, 96%, 53%, 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00), 0px 2px 4px -1px hsl(47, 96%, 53%, 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00), 0px 4px 6px -1px hsl(47, 96%, 53%, 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00), 0px 8px 10px -1px hsl(47, 96%, 53%, 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(47, 96%, 53%, 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(234, 25%, 8%);
+  --foreground: hsl(36, 45%, 95%);
+  --card: hsl(234, 15%, 15%);
+  --card-foreground: hsl(36, 45%, 95%);
+  --popover: hsl(234, 15%, 15%);
+  --popover-foreground: hsl(36, 45%, 95%);
+  --primary: hsl(47, 96%, 53%);
+  --primary-foreground: hsl(234, 25%, 8%);
+  --secondary: hsl(234, 15%, 20%);
+  --secondary-foreground: hsl(36, 45%, 95%);
+  --muted: hsl(234, 15%, 12%);
+  --muted-foreground: hsl(234, 8%, 65%);
+  --accent: hsl(47, 76%, 68%);
+  --accent-foreground: hsl(234, 25%, 8%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(36, 45%, 95%);
+  --border: hsl(234, 15%, 20%);
+  --input: hsl(234, 15%, 20%);
+  --ring: hsl(47, 96%, 53%);
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, hsl(234, 25%, 8%) 0%, hsl(234, 20%, 12%) 100%);
+}
+
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.menu-category-active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
