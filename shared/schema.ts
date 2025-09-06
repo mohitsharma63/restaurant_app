@@ -1,105 +1,101 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { 
+  pgTable, 
+  varchar, 
+  text, 
+  integer, 
+  decimal, 
+  timestamp, 
+  boolean,
+  jsonb
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  role: text("role").notNull().default("customer"), // customer, admin, staff
-});
-
+// Restaurants table
 export const restaurants = pgTable("restaurants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  address: text("address"),
   description: text("description"),
-  ownerId: varchar("owner_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Menu categories
+export const menuCategories = pgTable("menu_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const tables = pgTable("tables", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  tableNumber: integer("table_number").notNull(),
-  qrCode: text("qr_code").notNull().unique(),
-  isActive: boolean("is_active").default(true),
-});
-
-export const categories = pgTable("categories", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  name: text("name").notNull(),
-  displayOrder: integer("display_order").default(0),
-});
-
+// Menu items
 export const menuItems = pgTable("menu_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  categoryId: varchar("category_id").notNull().references(() => categories.id),
-  name: text("name").notNull(),
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
+  categoryId: varchar("category_id").references(() => menuCategories.id),
+  name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"),
-  isAvailable: boolean("is_available").default(true),
-  tags: text("tags").array(),
+  available: boolean("available").default(true),
   displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Tables
+export const tables = pgTable("tables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
+  tableNumber: varchar("table_number", { length: 50 }).notNull(),
+  section: varchar("section", { length: 50 }),
+  qrCode: text("qr_code"),
+  qrCodeUrl: text("qr_code_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Orders
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  tableId: varchar("table_id").notNull().references(() => tables.id),
-  customerId: varchar("customer_id").references(() => users.id),
-  status: text("status").notNull().default("pending"), // pending, confirmed, preparing, ready, served, cancelled
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  tax: decimal("tax", { precision: 10, scale: 2 }).notNull(),
-  serviceFee: decimal("service_fee", { precision: 10, scale: 2 }).notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-  paymentStatus: text("payment_status").default("pending"), // pending, paid, failed
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
+  tableId: varchar("table_id").references(() => tables.id),
+  customerName: varchar("customer_name", { length: 255 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, preparing, ready, completed, cancelled
+  orderType: varchar("order_type", { length: 50 }).default("dine-in"), // dine-in, takeaway, delivery
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  estimatedTime: integer("estimated_time"), // in minutes
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Order items
 export const orderItems = pgTable("order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: varchar("order_id").notNull().references(() => orders.id),
-  menuItemId: varchar("menu_item_id").notNull().references(() => menuItems.id),
+  orderId: varchar("order_id").references(() => orders.id),
+  menuItemId: varchar("menu_item_id").references(() => menuItems.id),
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-  modifications: text("modifications"),
+  notes: text("notes"),
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
-  restaurants: many(restaurants),
-  orders: many(orders),
-}));
-
-export const restaurantsRelations = relations(restaurants, ({ one, many }) => ({
-  owner: one(users, {
-    fields: [restaurants.ownerId],
-    references: [users.id],
-  }),
-  tables: many(tables),
-  categories: many(categories),
+export const restaurantsRelations = relations(restaurants, ({ many }) => ({
+  menuCategories: many(menuCategories),
   menuItems: many(menuItems),
+  tables: many(tables),
   orders: many(orders),
 }));
 
-export const tablesRelations = relations(tables, ({ one, many }) => ({
+export const menuCategoriesRelations = relations(menuCategories, ({ one, many }) => ({
   restaurant: one(restaurants, {
-    fields: [tables.restaurantId],
-    references: [restaurants.id],
-  }),
-  orders: many(orders),
-}));
-
-export const categoriesRelations = relations(categories, ({ one, many }) => ({
-  restaurant: one(restaurants, {
-    fields: [categories.restaurantId],
+    fields: [menuCategories.restaurantId],
     references: [restaurants.id],
   }),
   menuItems: many(menuItems),
@@ -110,11 +106,19 @@ export const menuItemsRelations = relations(menuItems, ({ one, many }) => ({
     fields: [menuItems.restaurantId],
     references: [restaurants.id],
   }),
-  category: one(categories, {
+  category: one(menuCategories, {
     fields: [menuItems.categoryId],
-    references: [categories.id],
+    references: [menuCategories.id],
   }),
   orderItems: many(orderItems),
+}));
+
+export const tablesRelations = relations(tables, ({ one, many }) => ({
+  restaurant: one(restaurants, {
+    fields: [tables.restaurantId],
+    references: [restaurants.id],
+  }),
+  orders: many(orders),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -125,10 +129,6 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   table: one(tables, {
     fields: [orders.tableId],
     references: [tables.id],
-  }),
-  customer: one(users, {
-    fields: [orders.customerId],
-    references: [users.id],
   }),
   orderItems: many(orderItems),
 }));
@@ -145,73 +145,72 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 }));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  role: true,
+export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
-export const insertRestaurantSchema = createInsertSchema(restaurants).pick({
-  name: true,
-  description: true,
+export const insertMenuCategorySchema = createInsertSchema(menuCategories).omit({
+  id: true,
+  createdAt: true,
 });
 
-export const insertTableSchema = createInsertSchema(tables).pick({
-  restaurantId: true,
-  tableNumber: true,
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
-export const insertCategorySchema = createInsertSchema(categories).pick({
-  restaurantId: true,
-  name: true,
-  displayOrder: true,
+export const insertTableSchema = createInsertSchema(tables).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
-export const insertMenuItemSchema = createInsertSchema(menuItems).pick({
-  restaurantId: true,
-  categoryId: true,
-  name: true,
-  description: true,
-  price: true,
-  imageUrl: true,
-  isAvailable: true,
-  tags: true,
-  displayOrder: true,
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
-export const insertOrderSchema = createInsertSchema(orders).pick({
-  restaurantId: true,
-  tableId: true,
-  customerId: true,
-  subtotal: true,
-  tax: true,
-  serviceFee: true,
-  total: true,
-  estimatedTime: true,
-});
-
-export const insertOrderItemSchema = createInsertSchema(orderItems).pick({
-  orderId: true,
-  menuItemId: true,
-  quantity: true,
-  unitPrice: true,
-  totalPrice: true,
-  modifications: true,
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+  id: true,
 });
 
 // Types
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Restaurant = typeof restaurants.$inferSelect;
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
-export type InsertTable = z.infer<typeof insertTableSchema>;
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
+
+export type MenuCategory = typeof menuCategories.$inferSelect;
+export type InsertMenuCategory = z.infer<typeof insertMenuCategorySchema>;
+
+export type MenuItem = typeof menuItems.$inferSelect;
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+
+export type Table = typeof tables.$inferSelect;
+export type InsertTable = z.infer<typeof insertTableSchema>;
+
+export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
+
+export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 
-export type User = typeof users.$inferSelect;
-export type Restaurant = typeof restaurants.$inferSelect;
-export type Table = typeof tables.$inferSelect;
-export type Category = typeof categories.$inferSelect;
-export type MenuItem = typeof menuItems.$inferSelect;
-export type Order = typeof orders.$inferSelect;
-export type OrderItem = typeof orderItems.$inferSelect;
+// Extended types for API responses
+export type MenuItemWithCategory = MenuItem & {
+  category?: MenuCategory;
+};
+
+export type OrderWithDetails = Order & {
+  orderItems: (OrderItem & {
+    menuItem: MenuItem;
+  })[];
+  table?: Table;
+};
+
+export type CartItem = {
+  menuItem: MenuItem;
+  quantity: number;
+  notes?: string;
+};

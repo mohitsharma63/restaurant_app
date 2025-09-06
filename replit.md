@@ -1,10 +1,8 @@
-# Restaurant QR Code Ordering System
+# QR Code Menu System
 
 ## Overview
 
-This is a modern restaurant ordering system that enables customers to scan QR codes at tables to view menus and place orders directly from their phones. The system provides a comprehensive platform for restaurants to manage their digital presence, menus, orders, and table service through QR code technology.
-
-The application features a customer-facing menu interface accessed via QR codes, real-time order tracking, and an administrative dashboard for restaurant management. Built with a modern React frontend and Express backend, it uses PostgreSQL for data persistence and implements secure authentication and session management.
+This is a QR Code Menu System built as a full-stack restaurant ordering application. Customers scan QR codes at tables to access digital menus, place orders, and make payments. Restaurant staff manage orders through a dedicated dashboard. The system supports real-time order updates and includes QR code generation capabilities for table management.
 
 ## User Preferences
 
@@ -13,71 +11,40 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **React 18** with TypeScript for type safety and modern component patterns
-- **Wouter** for lightweight client-side routing instead of React Router
-- **TanStack Query** for server state management, caching, and background synchronization
-- **Shadcn/ui** component library built on Radix UI primitives for consistent, accessible design
-- **Tailwind CSS** for utility-first styling with custom design tokens
-- **Vite** as the build tool for fast development and optimized production builds
+
+**React with TypeScript** - Modern React application using TypeScript for type safety and better development experience. The frontend is structured as a single-page application (SPA) with client-side routing using Wouter for lightweight navigation between customer menu, restaurant dashboard, and QR generator pages.
+
+**Component Library** - Built on shadcn/ui component system with Radix UI primitives for accessible, customizable components. Uses Tailwind CSS for utility-first styling with a custom design system including restaurant-themed colors (orange primary, green secondary, yellow accent).
+
+**State Management** - Uses React Query (TanStack Query) for server state management with custom hooks for cart functionality and WebSocket connections. Cart state is managed locally with React hooks, providing add/remove item functionality and total calculations.
+
+**Real-time Updates** - WebSocket integration for live order status updates between customer and restaurant interfaces, enabling immediate notification of order changes and new orders.
 
 ### Backend Architecture
-- **Express.js** server with TypeScript for API endpoints and middleware
-- **Passport.js** with local strategy for authentication and session management
-- **Session-based authentication** using connect-pg-simple for PostgreSQL session storage
-- **RESTful API design** with consistent error handling and logging middleware
-- **Custom storage layer** abstracting database operations from route handlers
 
-### Database Schema Design
-- **PostgreSQL** as the primary database with UUID primary keys for security
-- **Drizzle ORM** for type-safe database operations and schema management
-- **Relational data model** connecting users, restaurants, tables, categories, menu items, and orders
-- **QR code integration** through unique codes linked to restaurant tables
-- **Order tracking system** with status management (pending, confirmed, preparing, ready, served)
+**Express.js Server** - RESTful API built with Express.js and TypeScript, providing endpoints for restaurants, menu management, table management, and order processing. Includes middleware for request logging and error handling.
 
-### Authentication & Authorization
-- **Password hashing** using Node.js crypto with scrypt and salt
-- **Session management** with secure cookies and PostgreSQL session store
-- **Role-based access control** supporting customer, staff, and admin roles
-- **Protected routes** with middleware for authenticated and role-specific access
+**Database Layer** - PostgreSQL database with Drizzle ORM for type-safe database operations. Schema includes restaurants, menu categories, menu items, tables, orders, and order items with proper relationships and constraints.
 
-### QR Code Integration
-- **Table-specific QR codes** that encode unique identifiers
-- **Mobile-first menu experience** optimized for smartphone scanning
-- **Fallback manual entry** for accessibility when camera scanning isn't available
-- **Demo QR simulation** for development and testing environments
+**WebSocket Server** - Real-time communication using WebSocket server for broadcasting order updates to connected clients, supporting live dashboard updates and customer notifications.
 
-### Real-time Features
-- **Polling-based order updates** using TanStack Query's refetch intervals
-- **Live order status tracking** for both customers and restaurant staff
-- **Cart persistence** in local component state with checkout flow
-- **Toast notifications** for user feedback and order confirmations
+**Storage Interface** - Abstracted storage layer with comprehensive CRUD operations for all entities, supporting complex queries for order management and menu filtering.
 
-## External Dependencies
+### Data Storage
 
-### Core Framework Dependencies
-- **@neondatabase/serverless** - Neon PostgreSQL serverless driver for database connectivity
-- **drizzle-orm** and **drizzle-zod** - Type-safe ORM with Zod schema validation
-- **@tanstack/react-query** - Server state management and caching
-- **wouter** - Lightweight routing library for React applications
+**PostgreSQL Database** - Primary data store using Neon serverless PostgreSQL for scalability and performance. Database schema designed with proper normalization and relationships between entities.
 
-### UI and Design System
-- **@radix-ui/* components** - Accessible, unstyled UI primitives (40+ components)
-- **tailwindcss** - Utility-first CSS framework with custom configuration
-- **class-variance-authority** and **clsx** - Conditional CSS class utilities
-- **lucide-react** - Icon library for consistent iconography
+**Drizzle ORM** - Type-safe database operations with schema validation using Drizzle with Zod for runtime type checking. Supports migrations and development-friendly database management.
 
-### Authentication and Security
-- **passport** and **passport-local** - Authentication middleware and strategy
-- **express-session** and **connect-pg-simple** - Session management with PostgreSQL
-- **@hookform/resolvers** and **react-hook-form** - Form handling and validation
+**Sample Data Initialization** - Automatic sample data generation for development and testing, including demo restaurants, menu items, and tables.
 
-### Development and Build Tools
-- **vite** and **@vitejs/plugin-react** - Build tooling and React integration
-- **typescript** - Static type checking across the entire codebase
-- **esbuild** - Fast JavaScript bundler for server-side code
-- **@replit/vite-plugin-runtime-error-modal** - Development error overlay
+### External Dependencies
 
-### Utility Libraries
-- **date-fns** - Date manipulation and formatting
-- **nanoid** - Unique ID generation for sessions and resources
-- **zod** - Runtime type validation and schema definition
+**Neon Database** - Serverless PostgreSQL hosting with connection pooling and automatic scaling
+**Radix UI** - Accessible component primitives for building the user interface
+**TanStack Query** - Server state management and caching for efficient data fetching
+**Tailwind CSS** - Utility-first CSS framework for responsive design
+**WebSocket (ws)** - Real-time bidirectional communication
+**QR Code API** - External QR code generation service for table codes
+**Vite** - Modern build tool for fast development and optimized production builds
+**Wouter** - Lightweight client-side routing library

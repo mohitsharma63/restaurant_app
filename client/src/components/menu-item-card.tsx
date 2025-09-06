@@ -1,74 +1,95 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MenuItem } from "@shared/schema";
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import { useCart } from "@/hooks/use-cart";
+import type { MenuItemWithCategory } from "@shared/schema";
 
 interface MenuItemCardProps {
-  item: MenuItem;
-  onAddToCart: (item: MenuItem, modifications?: string) => void;
+  item: MenuItemWithCategory;
 }
 
-export function MenuItemCard({ item, onAddToCart }: MenuItemCardProps) {
-  const formatCurrency = (amount: string | number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(typeof amount === 'string' ? parseFloat(amount) : amount);
+export default function MenuItemCard({ item }: MenuItemCardProps) {
+  const { addItem, removeItem, getItemQuantity } = useCart();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const quantity = getItemQuantity(item.id);
+  const price = parseFloat(item.price);
+
+  const handleAdd = async () => {
+    setIsLoading(true);
+    await addItem(item);
+    setIsLoading(false);
   };
 
-  const handleAddToCart = () => {
-    onAddToCart(item);
+  const handleRemove = async () => {
+    setIsLoading(true);
+    await removeItem(item.id);
+    setIsLoading(false);
   };
 
   return (
-    <Card className="card-hover overflow-hidden" data-testid={`card-menu-item-${item.id}`}>
+    <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden" data-testid={`card-menu-item-${item.id}`}>
       {item.imageUrl && (
-        <img
-          src={item.imageUrl}
+        <img 
+          src={item.imageUrl} 
           alt={item.name}
-          className="w-full h-48 object-cover"
+          className="w-full h-40 object-cover"
+          data-testid={`img-menu-item-${item.id}`}
         />
       )}
-      <CardContent className="p-4">
+      <div className="p-4">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-serif font-semibold text-card-foreground line-clamp-1" data-testid={`text-item-name-${item.id}`}>
+          <h3 className="font-semibold text-lg" data-testid={`text-item-name-${item.id}`}>
             {item.name}
           </h3>
-          <span className="text-lg font-semibold text-primary ml-2" data-testid={`text-item-price-${item.id}`}>
-            {formatCurrency(item.price)}
+          <span className="text-primary font-bold text-lg" data-testid={`text-item-price-${item.id}`}>
+            ${price.toFixed(2)}
           </span>
         </div>
         
         {item.description && (
-          <p className="text-sm text-muted-foreground mb-3 line-clamp-2" data-testid={`text-item-description-${item.id}`}>
+          <p className="text-muted-foreground text-sm mb-3" data-testid={`text-item-description-${item.id}`}>
             {item.description}
           </p>
         )}
         
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {item.tags?.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {!item.isAvailable && (
-              <Badge variant="destructive" className="text-xs">
-                Out of Stock
-              </Badge>
-            )}
+            <button
+              onClick={handleRemove}
+              disabled={quantity === 0 || isLoading}
+              className="w-8 h-8 bg-muted rounded-full flex items-center justify-center hover:bg-primary hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid={`button-decrease-${item.id}`}
+            >
+              <i className="fas fa-minus text-xs"></i>
+            </button>
+            
+            <span className="font-medium min-w-[2rem] text-center" data-testid={`text-quantity-${item.id}`}>
+              {quantity}
+            </span>
+            
+            <button
+              onClick={handleAdd}
+              disabled={isLoading}
+              className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid={`button-increase-${item.id}`}
+            >
+              <i className="fas fa-plus text-xs"></i>
+            </button>
           </div>
-          <Button
-            onClick={handleAddToCart}
-            disabled={!item.isAvailable}
-            size="sm"
+          
+          <button
+            onClick={handleAdd}
+            disabled={isLoading}
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid={`button-add-to-cart-${item.id}`}
           >
-            <Plus className="w-4 h-4" />
-          </Button>
+            {isLoading ? (
+              <i className="fas fa-spinner fa-spin"></i>
+            ) : (
+              "Add to Cart"
+            )}
+          </button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

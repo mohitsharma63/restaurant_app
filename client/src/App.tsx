@@ -3,37 +3,35 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "./hooks/use-auth";
-import { ProtectedRoute } from "./lib/protected-route";
-import HomePage from "@/pages/home-page";
-import MenuPage from "@/pages/menu-page";
-import OrderStatusPage from "@/pages/order-status-page";
-import AdminPage from "@/pages/admin-page";
-import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
+import CustomerMenu from "@/pages/customer-menu";
+import RestaurantDashboard from "@/pages/restaurant-dashboard";
+import QRGenerator from "@/pages/qr-generator";
+import NavigationTabs from "@/components/navigation-tabs";
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/menu/:qrCode" component={MenuPage} />
-      <Route path="/order/:orderId" component={OrderStatusPage} />
-      <ProtectedRoute path="/admin" component={AdminPage} />
-      <Route path="/auth" component={AuthPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <div className="min-h-screen bg-background">
+      <NavigationTabs />
+      <Switch>
+        <Route path="/" component={CustomerMenu} />
+        <Route path="/customer-menu" component={CustomerMenu} />
+        <Route path="/dashboard" component={RestaurantDashboard} />
+        <Route path="/qr-generator" component={QRGenerator} />
+        <Route path="/menu/:restaurantId/:tableId" component={CustomerMenu} />
+        <Route component={NotFound} />
+      </Switch>
+    </div>
   );
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
