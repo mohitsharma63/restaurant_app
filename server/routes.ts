@@ -61,6 +61,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/menu-items", async (req, res) => {
+    try {
+      const validatedData = insertMenuItemSchema.parse(req.body);
+      const menuItem = await storage.createMenuItem(validatedData);
+      res.status(201).json(menuItem);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid menu item data", error: error.message });
+    }
+  });
+
+  app.patch("/api/menu-items/:id", async (req, res) => {
+    try {
+      const menuItem = await storage.updateMenuItem(req.params.id, req.body);
+      if (!menuItem) {
+        return res.status(404).json({ message: "Menu item not found" });
+      }
+      res.json(menuItem);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update menu item" });
+    }
+  });
+
+  app.delete("/api/menu-items/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteMenuItem(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Menu item not found" });
+      }
+      res.json({ message: "Menu item deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete menu item" });
+    }
+  });
+
   // Order routes
   app.get("/api/orders", async (req, res) => {
     try {
