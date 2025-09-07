@@ -18,9 +18,10 @@ import {
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  onLogout?: () => void;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({ children, onLogout }: AdminLayoutProps) {
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -43,7 +44,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const isActive = (path: string) => location === path;
 
   const handleLogout = () => {
-    // Static logout - just redirect to main app
+    if (onLogout) {
+      onLogout();
+    }
     setLocation("/");
   };
 
