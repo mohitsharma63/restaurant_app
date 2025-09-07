@@ -66,7 +66,22 @@ export default function MobileLanding() {
 
   useEffect(() => {
     setIsVisible(true);
-  }, []);
+    
+    // Authenticate QR scan session - always set for any table access
+    const authData = {
+      restaurantId: restaurantId,
+      tableNumber: tableNumber,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('qr_scan_auth', JSON.stringify(authData));
+    
+    if (params.restaurantId && params.tableNumber) {
+      toast({
+        title: "QR Code Scanned Successfully! 📱",
+        description: `Welcome to Table ${params.tableNumber}`,
+      });
+    }
+  }, [restaurantId, tableNumber, params.restaurantId, params.tableNumber, toast]);
 
   // Mock restaurant data
   const restaurant: Restaurant = {
@@ -88,6 +103,14 @@ export default function MobileLanding() {
   });
 
   const handleStartOrdering = () => {
+    // Ensure QR scan authentication is set
+    const authData = {
+      restaurantId,
+      tableNumber,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('qr_scan_auth', JSON.stringify(authData));
+    
     setLocation(`/menu/${restaurantId}/${tableNumber}`);
     toast({
       title: "Welcome! 🍽️",

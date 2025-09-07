@@ -46,8 +46,9 @@ export default function AdminLayout({ children, onLogout }: AdminLayoutProps) {
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
+    } else {
+      setLocation("/admin");
     }
-    setLocation("/");
   };
 
   return (

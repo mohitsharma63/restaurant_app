@@ -179,13 +179,13 @@ const mockMenuItems: MenuItem[] = [
 ];
 
 const categories = [
-  "All", 
-  "Appetizers", 
-  "Main Course", 
-  "Desserts", 
-  "Beverages", 
-  "Soups", 
-  "Salads", 
+  "All",
+  "Appetizers",
+  "Main Course",
+  "Desserts",
+  "Beverages",
+  "Soups",
+  "Salads",
   "Seafood",
   "Vegetarian",
   "Pizza",
@@ -213,13 +213,31 @@ export default function Menu() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<string[]>([]); // Changed from Set<string> to string[]
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  // Initialize favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('menu_favorites');
+    if (savedFavorites) {
+      try {
+        const favArray = JSON.parse(savedFavorites);
+        setFavorites(favArray); // Directly set the parsed array
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
+    }
+  }, []);
+
+  // Save favorites to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('menu_favorites', JSON.stringify(favorites));
+  }, [favorites]);
+  
   // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem("restaurant-cart");
@@ -327,12 +345,13 @@ export default function Menu() {
 
   const toggleFavorite = (itemId: string) => {
     setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(itemId)) {
-        newFavorites.delete(itemId);
+      const newFavorites = [...prev]; // Work with a mutable array
+      const index = newFavorites.indexOf(itemId);
+      if (index > -1) {
+        newFavorites.splice(index, 1);
         toast({ title: "Removed from favorites ❤️" });
       } else {
-        newFavorites.add(itemId);
+        newFavorites.push(itemId);
         toast({ title: "Added to favorites! ❤️" });
       }
       return newFavorites;
@@ -411,6 +430,7 @@ export default function Menu() {
   const restaurantName = restaurant?.name || "Delicious Bistro";
   const cartCount = getTotalItems();
 
+
   // Mobile Card Component
   const MobileMenuCard = ({ item }: { item: MenuItem }) => (
     <Card className="group overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl mb-4">
@@ -456,7 +476,7 @@ export default function Menu() {
               onClick={() => toggleFavorite(item.id)}
               className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 hover:bg-white shadow-md"
             >
-              <Heart className={`w-4 h-4 ${favorites.has(item.id) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
+              <Heart className={`w-4 h-4 ${favorites.includes(item.id) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
             </Button>
 
             {/* Bottom Info */}
@@ -535,12 +555,11 @@ export default function Menu() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
       <Navigation />
-      
 
-      {/* Menu Content */}
-      <div className="flex-1 px-4 py-4 pb-20">
+      {/* Main Content */}
+      <div className={`pb-20 ${isMobile ? 'px-4' : 'max-w-7xl mx-auto px-6'}`}>
         {/* Search Bar */}
         <div className="mb-4">
           <div className="relative">
@@ -569,10 +588,10 @@ export default function Menu() {
         <div className="mb-6">
           <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => {
-              const categoryCount = mockMenuItems.filter(item => 
+              const categoryCount = mockMenuItems.filter(item =>
                 category === "All" || item.category === category
               ).length;
-              
+
               return (
                 <Button
                   key={category}
@@ -580,19 +599,19 @@ export default function Menu() {
                   onClick={() => setSelectedCategory(category)}
                   className={`
                     flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300
-                    ${selectedCategory === category 
-                      ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600' 
+                    ${selectedCategory === category
+                      ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
                     }
                   `}
                 >
                   <span>{category}</span>
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className={`
                       ml-2 px-1.5 py-0.5 text-xs
-                      ${selectedCategory === category 
-                        ? 'bg-white/20 text-white' 
+                      ${selectedCategory === category
+                        ? 'bg-white/20 text-white'
                         : 'bg-gray-100 text-gray-500'
                       }
                     `}
@@ -619,7 +638,7 @@ export default function Menu() {
               {showFilters ? 'Hide' : 'More'}
             </Button>
           </div>
-          
+
           <div className="flex items-center space-x-2 overflow-x-auto pb-2">
             {[
               { key: 'vegetarian', label: 'Vegetarian', icon: Leaf },
@@ -637,7 +656,7 @@ export default function Menu() {
                   flex-shrink-0 rounded-full text-xs transition-all duration-300
                   ${activeFilters.has(filter.key)
                     ? 'bg-orange-500 text-white hover:bg-orange-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-orange-50 hover:text-orange-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
                   }
                 `}
               >
@@ -656,7 +675,7 @@ export default function Menu() {
                 {selectedCategory === "All" ? "All Items" : selectedCategory}
               </h2>
               <p className="text-sm text-gray-500">
-                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} 
+                {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
                 {searchTerm && ` matching "${searchTerm}"`}
                 {activeFilters.size > 0 && ` with ${activeFilters.size} filter${activeFilters.size !== 1 ? 's' : ''}`}
               </p>
@@ -667,20 +686,40 @@ export default function Menu() {
             </div>
           </div>
         </div>
-        {/* Menu Items Grid */}
-        <div className="space-y-0">
-          {filteredItems.map((item) => (
-            <MobileMenuCard key={item.id} item={item} />
-          ))}
-        </div>
+
+        {/* Desktop Menu Card */}
+        {!isMobile && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            {filteredItems.map((item) => (
+              <DesktopMenuCard 
+                key={item.id} 
+                item={item}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                getItemQuantity={getItemQuantity}
+                removeFromCart={removeFromCart}
+                addToCart={addToCart}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Menu Items Grid (Mobile) */}
+        {isMobile && (
+          <div className="space-y-0">
+            {filteredItems.map((item) => (
+              <MobileMenuCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
 
         {filteredItems.length === 0 && (
           <div className="text-center py-16">
             <ChefHat className="w-20 h-20 text-gray-300 mx-auto mb-6" />
             <h3 className="text-xl font-semibold text-gray-500 mb-2">No items found</h3>
             <p className="text-gray-400 mb-4">
-              {searchTerm 
-                ? `No items match "${searchTerm}"` 
+              {searchTerm
+                ? `No items match "${searchTerm}"`
                 : "Try adjusting your search or filters"
               }
             </p>
@@ -827,3 +866,133 @@ export default function Menu() {
     </div>
   );
 }
+
+// Desktop Menu Card Component
+interface DesktopMenuCardProps {
+  item: MenuItem;
+  favorites: string[]; // Changed to string[] to match state
+  toggleFavorite: (itemId: string) => void;
+  getItemQuantity: (itemId: string) => number;
+  removeFromCart: (itemId: string) => void;
+  addToCart: (item: MenuItem) => void;
+}
+
+const DesktopMenuCard = ({ item, favorites, toggleFavorite, getItemQuantity, removeFromCart, addToCart }: DesktopMenuCardProps) => (
+  <Card className="group overflow-hidden bg-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-3xl flex flex-col justify-between">
+    <CardContent className="p-0 flex-1 flex flex-col">
+      <div className="relative h-56 overflow-hidden rounded-t-3xl">
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.name}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <ChefHat className="w-16 h-16 text-gray-400" />
+          </div>
+        )}
+
+        {/* Top Badges */}
+        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+          {item.isPopular && (
+            <Badge className="bg-red-500/90 text-white px-2 py-1 text-xs rounded-full backdrop-blur-sm shadow-md">
+              Popular
+            </Badge>
+          )}
+          {item.isVegetarian && (
+            <Badge className="bg-green-500/90 text-white px-2 py-1 text-xs rounded-full backdrop-blur-sm shadow-md">
+              Veg
+            </Badge>
+          )}
+          {item.isSpicy && (
+            <Badge className="bg-orange-500/90 text-white px-2 py-1 text-xs rounded-full backdrop-blur-sm shadow-md">
+              Spicy
+            </Badge>
+          )}
+        </div>
+
+        {/* Favorite Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleFavorite(item.id)}
+          className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white shadow-md"
+        >
+          <Heart className={`w-5 h-5 ${favorites.includes(item.id) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
+        </Button>
+
+        {/* Bottom Info */}
+        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
+          <div className="flex items-center space-x-2">
+            {item.rating && (
+              <div className="flex items-center space-x-1 bg-black/40 rounded-full px-2 py-1">
+                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                <span className="text-sm font-semibold">{item.rating}</span>
+              </div>
+            )}
+            <div className="flex items-center space-x-1 bg-black/40 rounded-full px-2 py-1">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-semibold">{item.preparationTime}m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6 flex-1 flex flex-col justify-between">
+        <div className="mb-4">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            {item.name}
+          </h3>
+          <p className="text-gray-600 text-base leading-relaxed mb-3 line-clamp-3">
+            {item.description}
+          </p>
+        </div>
+
+        {/* Price & Add Button */}
+        <div className="mt-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline space-x-1">
+              <span className="text-2xl font-bold text-gray-900">${item.price}</span>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {getItemQuantity(item.id) > 0 ? (
+                <div className="flex items-center space-x-3 bg-orange-50 rounded-full px-4 py-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFromCart(item.id)}
+                    className="w-8 h-8 p-0 rounded-full bg-orange-100 text-orange-600 hover:bg-orange-200"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="text-lg font-semibold text-orange-600 min-w-[24px] text-center">
+                    {getItemQuantity(item.id)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addToCart(item)}
+                    className="w-8 h-8 p-0 rounded-full bg-orange-500 text-white hover:bg-orange-600"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => addToCart(item)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full text-base font-semibold shadow-md"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add to Cart
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);

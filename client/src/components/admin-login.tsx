@@ -34,6 +34,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           description: "Welcome to the admin panel!",
         });
         onLogin();
+        
       } else {
         toast({
           title: "Login Failed",

@@ -69,7 +69,8 @@ export default function QrLanding() {
 
   const handleSimulateScan = () => {
     if (restaurant) {
-      setLocation(`/menu/${restaurant.id}/${tableNumber}`);
+      // Always go to welcome page first for QR authentication
+      setLocation(`/welcome/${restaurant.id}/${tableNumber}`);
     }
   };
 
@@ -147,27 +148,36 @@ export default function QrLanding() {
         </div>
 
         <div className="max-w-md mx-auto bg-card rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-center mb-6" data-testid="heading-customer-experience">
+          <h2 className="text-xl md:text-2xl font-bold text-center mb-6" data-testid="heading-customer-experience">
             Customer Experience
           </h2>
-          <div className="qr-scanner-frame aspect-square bg-muted mb-4">
+          <div className="qr-scanner-frame aspect-square bg-muted mb-4 relative">
             <div className="w-full h-full flex items-center justify-center">
               <div className="text-center">
-                <QrCode className="w-16 h-16 text-primary mb-4 mx-auto" />
-                <p className="text-sm text-muted-foreground" data-testid="text-scan-instruction">
-                  Point camera at QR code
+                <QrCode className="w-12 h-12 md:w-16 md:h-16 text-primary mb-4 mx-auto animate-pulse" />
+                <p className="text-xs md:text-sm text-muted-foreground px-4" data-testid="text-scan-instruction">
+                  Point your phone's camera at the QR code on your table
                 </p>
               </div>
             </div>
+            {/* Scanning overlay for mobile */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="w-full h-full border-2 border-dashed border-primary/30 rounded-lg animate-pulse"></div>
+            </div>
           </div>
-          <Button 
-            onClick={handleSimulateScan}
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-            data-testid="button-simulate-scan"
-          >
-            <Camera className="w-4 h-4 mr-2" />
-            Simulate QR Scan
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              onClick={handleSimulateScan}
+              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white py-3 text-base font-semibold shadow-lg"
+              data-testid="button-simulate-scan"
+            >
+              <Camera className="w-5 h-5 mr-2" />
+              Open Mobile Menu
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              Click above to simulate scanning Table {tableNumber} QR code
+            </p>
+          </div>
         </div>
       </div>
     </div>
