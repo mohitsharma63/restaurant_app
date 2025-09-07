@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,7 +92,7 @@ export default function OrderStatus() {
         return prev;
       });
     }, 10000); // Update every 10 seconds for demo
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -125,28 +124,27 @@ export default function OrderStatus() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+      <div className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setLocation("/menu")}
-              className="p-2"
+              className="p-1.5"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 text-gray-800" />
             </Button>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Order Status</h1>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <span>Order {order.id}</span>
+              <div className="flex items-center space-x-3 text-sm text-gray-500 mt-0.5">
+                <span>Order {order.id.slice(-6)}</span>
                 <span>•</span>
                 <span>{order.orderTime}</span>
               </div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="p-2">
+          <Button variant="ghost" size="sm" className="p-2 text-gray-800">
             <RefreshCw className="w-5 h-5" />
           </Button>
         </div>
@@ -166,7 +164,7 @@ export default function OrderStatus() {
               <p className="text-white/80 mb-4">
                 {statusSteps[currentStepIndex]?.description || "Processing your order"}
               </p>
-              
+
               {order.status !== "completed" && timeRemaining > 0 && (
                 <div className="flex items-center justify-center space-x-2 bg-white/20 rounded-xl py-2 px-4">
                   <Timer className="w-4 h-4" />
@@ -175,7 +173,7 @@ export default function OrderStatus() {
                   </span>
                 </div>
               )}
-              
+
               {order.status === "ready" && (
                 <div className="flex items-center justify-center space-x-2 bg-green-500/20 rounded-xl py-2 px-4 border border-green-300">
                   <Bell className="w-4 h-4" />
@@ -196,7 +194,7 @@ export default function OrderStatus() {
               const isCompleted = index <= currentStepIndex;
               const isCurrent = index === currentStepIndex;
               const StepIcon = step.icon;
-              
+
               return (
                 <div key={step.key} className="flex items-center space-x-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
@@ -212,7 +210,7 @@ export default function OrderStatus() {
                       <StepIcon className="w-5 h-5" />
                     )}
                   </div>
-                  
+
                   <div className="flex-1">
                     <div className={`font-medium ${
                       isCompleted ? 'text-gray-900' : 'text-gray-500'
@@ -225,7 +223,7 @@ export default function OrderStatus() {
                       {step.description}
                     </div>
                   </div>
-                  
+
                   {isCurrent && (
                     <Badge className="bg-orange-100 text-orange-700 animate-pulse">
                       Current

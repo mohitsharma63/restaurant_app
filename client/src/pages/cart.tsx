@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import Navigation from "@/components/navigation";
 import { 
   ShoppingCart, 
   Plus, 
@@ -153,22 +154,7 @@ export default function Cart() {
   if (cart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center space-x-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setLocation("/menu")}
-                className="p-2"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h1 className="text-lg font-bold text-gray-900">Your Cart</h1>
-            </div>
-          </div>
-        </div>
+        <Navigation />
 
         {/* Empty Cart */}
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
@@ -193,38 +179,7 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center space-x-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setLocation("/menu")}
-              className="p-2"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">Your Cart</h1>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <MapPin className="w-3 h-3" />
-                <span>Table 5</span>
-                <Clock className="w-3 h-3 ml-2" />
-                <span>{getEstimatedTime()} min</span>
-              </div>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearCart}
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      <Navigation />
 
       <div className="p-4 pb-32 space-y-4">
         {/* Cart Items */}
