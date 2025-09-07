@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -13,9 +14,15 @@ import AdminOrders from "@/pages/admin/orders";
 import AdminMenu from "@/pages/admin/menu";
 import AdminCustomers from "@/pages/admin/customers";
 import AdminSettings from "@/pages/admin/settings";
-
+import Menu from "@/pages/menu";
 
 function AdminRouter() {
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  if (!isAdminLoggedIn) {
+    return <AdminLogin onLogin={() => setIsAdminLoggedIn(true)} />;
+  }
+
   return (
     <AdminLayout>
       <Switch>
@@ -32,21 +39,37 @@ function AdminRouter() {
 }
 
 function App() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
- 
+  const [location] = useLocation();
+  
+  // Check if current route is admin route
+  const isAdminRoute = location.startsWith('/admin');
+
   return (
-     <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <div className="min-h-screen bg-background">
-            {isAdminLoggedIn ? (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <div className="min-h-screen bg-background">
+          <Switch>
+            {/* Customer menu routes - available without login */}
+            <Route path="/menu" component={Menu} />
+            <Route path="/menu/:restaurantId/:tableNumber" component={Menu} />
+            
+            {/* Admin routes - protected with login */}
+            <Route path="/admin/:path*">
               <AdminRouter />
-            ) : (
-              <AdminLogin onLogin={() => setIsAdminLoggedIn(true)} />
-            )}
-          </div>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
+            </Route>
+            
+            {/* Default route */}
+            <Route path="/">
+              <Menu />
+            </Route>
+            
+            {/* 404 for other routes */}
+            <Route component={NotFound} />
+          </Switch>
+        </div>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
