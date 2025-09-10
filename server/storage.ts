@@ -197,21 +197,6 @@ export class MemStorage implements IStorage {
     return menuItem;
   }
 
-  async updateMenuItem(id: string, updates: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
-    const existingItem = this.menuItems.get(id);
-    if (!existingItem) {
-      return undefined;
-    }
-    
-    const updatedItem: MenuItem = { ...existingItem, ...updates };
-    this.menuItems.set(id, updatedItem);
-    return updatedItem;
-  }
-
-  async deleteMenuItem(id: string): Promise<boolean> {
-    return this.menuItems.delete(id);
-  }
-
   async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<MenuItem | undefined> {
     const menuItem = this.menuItems.get(id);
     if (!menuItem) return undefined;
@@ -219,6 +204,10 @@ export class MemStorage implements IStorage {
     const updated = { ...menuItem, ...updates };
     this.menuItems.set(id, updated);
     return updated;
+  }
+
+  async deleteMenuItem(id: string): Promise<boolean> {
+    return this.menuItems.delete(id);
   }
 
   // Orders
