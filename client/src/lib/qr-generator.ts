@@ -12,3 +12,9 @@ export function downloadQrCode(url: string, filename: string = 'qr-code.png') {
   link.click();
   document.body.removeChild(link);
 }
+
+export const generateQRCodeURL = (restaurantId: string, tableNumber: string): string => {
+  // Use the current development environment URL
+  const baseUrl = window.location.origin;
+  return `${baseUrl}/${restaurantId}/${tableNumber}`;
+};
