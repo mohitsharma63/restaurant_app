@@ -23,7 +23,6 @@ function App() {
           <Switch>
             {/* Customer routes */}
             <Route path="/menu/:restaurantId/:tableNumber" component={Menu} />
-            <Route path="/menu/:restaurantId" component={Menu} />
             <Route path="/menu" component={Menu} />
             <Route path="/cart" component={Cart} />
             <Route path="/dashboard" component={Dashboard} />
