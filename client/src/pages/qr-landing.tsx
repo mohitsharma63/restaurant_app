@@ -69,8 +69,11 @@ export default function QrLanding() {
 
   const handleSimulateScan = () => {
     if (restaurant) {
-      // Always go to welcome page first for QR authentication
-      setLocation(`/welcome/${restaurant.id}/${tableNumber}`);
+      // Go directly to menu page
+      setLocation(`/menu/${restaurant.id}/${tableNumber}`);
+    } else {
+      // If no restaurant data, use default values
+      setLocation(`/menu/default/${tableNumber}`);
     }
   };
 
