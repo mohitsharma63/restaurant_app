@@ -1,4 +1,3 @@
-
 import { Route, Switch, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin-layout";
@@ -17,31 +16,36 @@ export default function AdminRouter() {
   useEffect(() => {
     // Check authentication status
     const checkAuth = () => {
-      // Add your authentication logic here
       const token = localStorage.getItem('admin_token');
       setIsAuthenticated(!!token);
     };
-    
+
     checkAuth();
   }, []);
 
-  // If not authenticated and not on login page, redirect to login
-  if (!isAuthenticated && !location.includes('/admin/login')) {
-    return <AdminLogin />;
-  }
-
-  // If authenticated and on login page, redirect to dashboard
-  if (isAuthenticated && location.includes('/admin/login')) {
+  const handleLogin = () => {
+    setIsAuthenticated(true);
     setLocation('/admin/dashboard');
-    return null;
+  };
+
+  // Use useEffect to handle redirects to avoid setState during render
+  useEffect(() => {
+    if (isAuthenticated && location.includes('/admin/login')) {
+      setLocation('/admin/dashboard');
+    }
+  }, [isAuthenticated, location, setLocation]);
+
+  // If not authenticated and not on login page, show login
+  if (!isAuthenticated && !location.includes('/admin/login')) {
+    return <AdminLogin onLogin={handleLogin} />;
   }
 
   return (
     <Switch>
       <Route path="/admin/login">
-        <AdminLogin />
+        <AdminLogin onLogin={handleLogin} />
       </Route>
-      
+
       <Route path="/admin/:path*">
         <AdminLayout>
           <Switch>

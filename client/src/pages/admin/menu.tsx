@@ -13,25 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { generateQrCodeUrl, downloadQrCode } from "@/lib/qr-generator";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-interface MenuItem {
-  id: string;
-  restaurantId: string;
-  name: string;
-  description: string;
-  price: string;
-  category: string;
-  imageUrl: string;
-  isAvailable: boolean;
-}
-
-interface QrCodeData {
-  id: string;
-  tableNumber: number;
-  qrData: string;
-  isActive: boolean;
-  createdAt: string;
-}
+import { staticMenuItems, staticCategories, staticQrCodes, MenuItem, QrCodeData, Category } from "@/lib/static-data";
 
 interface MenuItemForm {
   name: string;
@@ -40,14 +22,6 @@ interface MenuItemForm {
   category: string;
   imageUrl: string;
   isAvailable: boolean;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-  sortOrder: number;
 }
 
 export default function AdminMenu() {
@@ -61,26 +35,16 @@ export default function AdminMenu() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Static categories data
-  const [categoriesData, setCategoriesData] = useState<Category[]>([
-    { id: "1", name: "Appetizers", description: "Starter dishes and small plates", isActive: true, sortOrder: 1 },
-    { id: "2", name: "Main Courses", description: "Primary dishes and entrees", isActive: true, sortOrder: 2 },
-    { id: "3", name: "Desserts", description: "Sweet treats and desserts", isActive: true, sortOrder: 3 },
-    { id: "4", name: "Beverages", description: "Drinks and refreshments", isActive: true, sortOrder: 4 },
-    { id: "5", name: "Soups", description: "Hot and cold soups", isActive: true, sortOrder: 5 },
-    { id: "6", name: "Salads", description: "Fresh salads and greens", isActive: true, sortOrder: 6 },
-    { id: "7", name: "Pizza", description: "Wood-fired pizzas", isActive: true, sortOrder: 7 },
-    { id: "8", name: "Pasta", description: "Italian pasta dishes", isActive: true, sortOrder: 8 },
-    { id: "9", name: "Seafood", description: "Fresh seafood options", isActive: true, sortOrder: 9 },
-    { id: "10", name: "Vegetarian", description: "Plant-based options", isActive: true, sortOrder: 10 },
-    { id: "11", name: "Specials", description: "Chef's special dishes", isActive: true, sortOrder: 11 }
-  ]);
+  // Use static data
+  const [categoriesData, setCategoriesData] = useState<Category[]>(staticCategories);
+  const [menuItemsData, setMenuItemsData] = useState<MenuItem[]>(staticMenuItems);
+  const [qrCodesData, setQrCodesData] = useState<QrCodeData[]>(staticQrCodes);
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     description: "",
     isActive: true,
-    sortOrder: 1
+    sortOrder: categoriesData.length + 1
   });
 
   // Computed categories for dropdowns
@@ -98,39 +62,30 @@ export default function AdminMenu() {
     isAvailable: true
   });
 
-  // Get restaurant data
-  const { data: restaurants } = useQuery({
-    queryKey: ['/api/restaurants'],
-  });
+  // Static restaurant data
+  const restaurant = { id: "rest-1", name: "Delicious Bistro" };
 
-  const restaurant = restaurants?.[0];
-
-  // Get menu items
-  const { data: menuItems = [], isLoading: menuLoading } = useQuery({
-    queryKey: [`/api/restaurants/${restaurant?.id}/menu`],
-    enabled: !!restaurant?.id,
-  });
-
-  // Get QR codes for the restaurant
-  const { data: qrCodes = [], isLoading: qrLoading } = useQuery({
-    queryKey: [`/api/restaurants/${restaurant?.id}/qr-codes`],
-    enabled: !!restaurant?.id,
-  });
+  // Use static data instead of API calls
+  const menuItems = menuItemsData;
+  const qrCodes = qrCodesData;
+  const menuLoading = false;
+  const qrLoading = false;
 
   // Create menu item mutation
   const createMenuItemMutation = useMutation({
     mutationFn: async (data: MenuItemForm) => {
       if (!restaurant) throw new Error("No restaurant available");
 
-      const menuItemData = {
-        ...data,
-        restaurantId: restaurant.id
+      const newMenuItem: MenuItem = {
+        id: Date.now().toString(),
+        restaurantId: restaurant.id,
+        ...data
       };
 
-      return await apiRequest("POST", "/api/menu-items", menuItemData);
+      setMenuItemsData(prev => [...prev, newMenuItem]);
+      return newMenuItem;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/restaurants/${restaurant?.id}/menu`] });
       toast({
         title: "Menu Item Added",
         description: "New menu item has been created successfully."
@@ -149,10 +104,12 @@ export default function AdminMenu() {
   // Update menu item mutation
   const updateMenuItemMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<MenuItemForm> }) => {
-      return await apiRequest("PATCH", `/api/menu-items/${data.id}`, data.updates);
+      setMenuItemsData(prev => prev.map(item =>
+        item.id === data.id ? { ...item, ...data.updates } : item
+      ));
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/restaurants/${restaurant?.id}/menu`] });
       toast({
         title: "Menu Item Updated",
         description: "Menu item has been updated successfully."
@@ -171,10 +128,10 @@ export default function AdminMenu() {
   // Delete menu item mutation
   const deleteMenuItemMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/menu-items/${id}`);
+      setMenuItemsData(prev => prev.filter(item => item.id !== id));
+      return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/restaurants/${restaurant?.id}/menu`] });
       toast({
         title: "Menu Item Deleted",
         description: "Menu item has been deleted successfully."
@@ -182,7 +139,7 @@ export default function AdminMenu() {
     },
     onError: (error: any) => {
       toast({
-        title: "Error", 
+        title: "Error",
         description: error.message || "Failed to delete menu item.",
         variant: "destructive"
       });
@@ -194,18 +151,18 @@ export default function AdminMenu() {
     mutationFn: async () => {
       if (!restaurant) throw new Error("No restaurant available");
 
-      const qrData = {
-        restaurantId: restaurant.id,
+      const newQrCode: QrCodeData = {
+        id: Date.now().toString(),
         tableNumber: tableNumber,
         qrData: `/menu/${restaurant.id}/${tableNumber}`,
-        isActive: true
+        isActive: true,
+        createdAt: new Date().toISOString()
       };
 
-      await apiRequest("POST", "/api/qr-codes", qrData);
+      setQrCodesData(prev => [...prev, newQrCode]);
       return generateQrCodeUrl(`${window.location.origin}/menu/${restaurant.id}/${tableNumber}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/restaurants/${restaurant?.id}/qr-codes`] });
       toast({
         title: "QR Code Generated",
         description: `QR code for Table ${tableNumber} has been created successfully.`
@@ -281,8 +238,8 @@ export default function AdminMenu() {
       return;
     }
 
-    setCategoriesData(prev => prev.map(cat => 
-      cat.id === editingCategory.id 
+    setCategoriesData(prev => prev.map(cat =>
+      cat.id === editingCategory.id
         ? { ...cat, name: categoryForm.name.trim(), description: categoryForm.description.trim(), isActive: categoryForm.isActive, sortOrder: categoryForm.sortOrder }
         : cat
     ));
@@ -310,7 +267,7 @@ export default function AdminMenu() {
     if (!category) return;
 
     // Check if category has menu items
-    const hasItems = menuItems.some((item: MenuItem) => item.category === category.name);
+    const hasItems = menuItemsData.some((item: MenuItem) => item.category === category.name);
     if (hasItems) {
       toast({
         title: "Cannot Delete",
@@ -330,7 +287,7 @@ export default function AdminMenu() {
   };
 
   const handleToggleCategoryStatus = (categoryId: string) => {
-    setCategoriesData(prev => prev.map(cat => 
+    setCategoriesData(prev => prev.map(cat =>
       cat.id === categoryId ? { ...cat, isActive: !cat.isActive } : cat
     ));
   };
@@ -381,7 +338,8 @@ export default function AdminMenu() {
   };
 
   const handleDownloadQr = (qrCode: QrCodeData) => {
-    const qrUrl = generateQrCodeUrl(`${window.location.origin}${qrCode.qrData}`);
+    const menuUrl = `${window.location.origin}/menu/${qrCode.restaurantId}/${qrCode.tableNumber}`;
+    const qrUrl = generateQrCodeUrl(menuUrl);
     downloadQrCode(qrUrl, `table-${qrCode.tableNumber}-qr.png`);
 
     toast({
@@ -394,8 +352,8 @@ export default function AdminMenu() {
     generateQrMutation.mutate();
   };
 
-  const filteredMenuItems = selectedCategory === "all" 
-    ? menuItems 
+  const filteredMenuItems = selectedCategory === "all"
+    ? menuItems
     : menuItems.filter((item: MenuItem) => item.category === selectedCategory);
 
   const menuItemsByCategory = categories.reduce((acc, category) => {
@@ -550,7 +508,7 @@ export default function AdminMenu() {
             {categoriesData
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((category) => {
-                const itemCount = menuItems.filter((item: MenuItem) => item.category === category.name).length;
+                const itemCount = menuItemsData.filter((item: MenuItem) => item.category === category.name).length;
                 return (
                   <Card key={category.id} className="overflow-hidden">
                     <CardContent className="p-4">
@@ -849,7 +807,7 @@ export default function AdminMenu() {
                     className="w-full"
                   />
                 </div>
-                <Button 
+                <Button
                   onClick={handleGenerateQr}
                   disabled={generateQrMutation.isPending}
                   className="flex items-center gap-2"
@@ -887,7 +845,7 @@ export default function AdminMenu() {
 
                         {/* QR Code Preview */}
                         <div className="w-32 h-32 mx-auto bg-muted rounded-lg flex items-center justify-center mb-4">
-                          <img 
+                          <img
                             src={generateQrCodeUrl(`${window.location.origin}${qrCode.qrData}`)}
                             alt={`QR Code for Table ${qrCode.tableNumber}`}
                             className="w-28 h-28"
@@ -933,8 +891,8 @@ export default function AdminMenu() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="p-4 h-auto flex-col"
                   onClick={() => {
                     const startTable = Math.max(...qrCodes.map((qr: QrCodeData) => qr.tableNumber), 0) + 1;
@@ -946,8 +904,8 @@ export default function AdminMenu() {
                   <span className="text-xs text-gray-500">Auto-increment table number</span>
                 </Button>
 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="p-4 h-auto flex-col"
                   onClick={() => {
                     qrCodes.forEach((qrCode: QrCodeData) => {
@@ -964,8 +922,8 @@ export default function AdminMenu() {
                   <span className="text-xs text-gray-500">Bulk download QR codes</span>
                 </Button>
 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="p-4 h-auto flex-col"
                   onClick={() => window.open('/qr-landing', '_blank')}
                 >

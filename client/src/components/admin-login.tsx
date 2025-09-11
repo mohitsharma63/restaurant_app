@@ -29,6 +29,8 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     // Simulate login delay
     setTimeout(() => {
       if (email === staticCredentials.email && password === staticCredentials.password) {
+        // Set authentication token
+        localStorage.setItem('admin_token', 'authenticated_admin_user');
         toast({
           title: "Login Successful",
           description: "Welcome to the admin panel!",

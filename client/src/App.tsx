@@ -1,4 +1,3 @@
-
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -23,11 +22,14 @@ function App() {
         <div className="min-h-screen bg-background">
           <Switch>
             {/* Customer routes */}
-            <Route path="/menu/:restaurantId?" component={Menu} />
+            <Route path="/menu/:restaurantId/:tableNumber" component={Menu} />
+            <Route path="/menu/:restaurantId" component={Menu} />
+            <Route path="/menu" component={Menu} />
             <Route path="/cart" component={Cart} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/order-status/:orderId?" component={OrderStatus} />
             <Route path="/qr/:tableId?" component={QrLanding} />
+            <Route path="/mobile/:restaurantId/:tableNumber" component={MobileLanding} />
             <Route path="/mobile" component={MobileLanding} />
 
             {/* Admin routes - protected with login */}
