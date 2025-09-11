@@ -1,4 +1,4 @@
-import { Route, Switch, Redirect } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,20 +13,6 @@ import QrLanding from "@/pages/qr-landing";
 import MobileLanding from "@/pages/mobile-landing";
 import NotFound from "@/pages/not-found";
 
-// Dummy components to satisfy the provided changes, as they were not in the original code.
-// In a real scenario, these would be imported from their respective files.
-const AdminLogin = () => <div>Admin Login</div>;
-const AdminDashboard = () => <div>Admin Dashboard</div>;
-const AdminOrders = () => <div>Admin Orders</div>;
-const AdminMenu = () => <div>Admin Menu</div>;
-const AdminCustomers = () => <div>Admin Customers</div>;
-const AdminSettings = () => <div>Admin Settings</div>;
-const MenuPage = () => <div>Menu Page</div>;
-const CartPage = () => <div>Cart Page</div>;
-const OrderStatusPage = () => <div>Order Status Page</div>;
-const QrLandingPage = () => <div>QR Landing Page</div>;
-const MobileLandingPage = () => <div>Mobile Landing Page</div>;
-
 function App() {
   const [, setLocation] = useLocation();
 
@@ -35,19 +21,29 @@ function App() {
       <TooltipProvider>
         <div className="min-h-screen bg-background">
           <Switch>
-            <Route path="/" component={() => <Redirect to="/mobile" />} />
-            <Route path="/admin/login" component={AdminLogin} />
-            <Route path="/admin/dashboard" component={() => <AdminRouter><AdminDashboard /></AdminRouter>} />
-            <Route path="/admin/orders" component={() => <AdminRouter><AdminOrders /></AdminRouter>} />
-            <Route path="/admin/menu" component={() => <AdminRouter><AdminMenu /></AdminRouter>} />
-            <Route path="/admin/customers" component={() => <AdminRouter><AdminCustomers /></AdminRouter>} />
-            <Route path="/admin/settings" component={() => <AdminRouter><AdminSettings /></AdminRouter>} />
+            {/* Customer routes */}
+            <Route path="/menu/:restaurantId/:tableNumber" component={Menu} />
+            <Route path="/menu/:restaurantId" component={Menu} />
+            <Route path="/menu" component={Menu} />
+            <Route path="/cart" component={Cart} />
             <Route path="/dashboard" component={Dashboard} />
-            <Route path="/menu" component={MenuPage} />
-            <Route path="/cart" component={CartPage} />
-            <Route path="/order-status" component={OrderStatusPage} />
-            <Route path="/qr/:restaurantId/:tableNumber" component={QrLandingPage} />
-            <Route path="/mobile" component={MobileLandingPage} />
+            <Route path="/order-status/:orderId?" component={OrderStatus} />
+            <Route path="/qr/:tableId?" component={QrLanding} />
+            <Route path="/mobile/:restaurantId/:tableNumber" component={MobileLanding} />
+            <Route path="/mobile" component={MobileLanding} />
+
+            {/* Admin routes - protected with login */}
+            <Route path="/admin/:path*">
+              <AdminRouter />
+            </Route>
+
+            {/* Default route - Redirect to admin login */}
+            <Route path="/" component={() => {
+              setLocation('/admin/login');
+              return null;
+            }} />
+
+            {/* 404 for other routes */}
             <Route component={NotFound} />
           </Switch>
         </div>
